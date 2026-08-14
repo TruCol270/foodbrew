@@ -108,3 +108,29 @@ def create_database(path: Path | str, seed: Seed | None = None) -> Path:
     finally:
         conn.close()
     return path
+
+
+def ensure_database(path: Path | str, seed: Seed | None = None) -> Path:
+    """Create the database on first boot; otherwise leave its contents alone.
+
+    `create_database` refreshes reference rows with INSERT OR REPLACE, which is
+    right for a first boot and right for M3's reset-to-baseline button, and
+    wrong for a restart: from M3 the founder's edits live in those same rows.
+    """
+    path = Path(path)
+    if not path.exists():
+        return create_database(path, seed)
+
+    conn = sqlite3.connect(path)
+    try:
+        present = {
+            r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    finally:
+        conn.close()
+    missing = EXPECTED_TABLES - present
+    if missing:
+        raise ValueError(
+            f"{path} exists but its schema is missing: {', '.join(sorted(missing))}"
+        )
+    return path
