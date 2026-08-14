@@ -34,9 +34,11 @@ def evaluate(ctx: EvalContext) -> Evaluation:
     for module in ALL_RULES:
         produced = module.evaluate(ctx)
         for finding in produced:
-            # A module's static ADVISORY is the default; a rule may override it
-            # per finding (R12's per-enzyme promotion).
-            if module.ADVISORY and not finding.advisory:
+            # A module's static ADVISORY is the default; R12 is the one rule that
+            # overrides it per finding (its per-enzyme promotion, spec §6.1 R12) —
+            # every RuleFinding it emits already sets `advisory` explicitly, so it
+            # must be excluded from the blanket default or the promotion is undone.
+            if module.ADVISORY and module.RULE_ID != "R12" and not finding.advisory:
                 finding = RuleFinding(
                     finding.rule_id, finding.verdict, finding.message, finding.evidence,
                     finding.enzyme_id, finding.food_id, advisory=True,
