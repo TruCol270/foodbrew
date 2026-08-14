@@ -463,7 +463,7 @@ Language throughout: plain English, no jargon without a tooltip. Prohibited word
 
 # 14. Milestones (~4 weeks)
 
-- **M1 — Engine + seed (week 1):** schema, seed JSONs from the founder's documents, R1–R15, dosing, GI model, occasion envelope, aggregation, golden fixtures green.
+- **M1 — Engine + seed (week 1):** schema, seed JSONs from the founder's documents, R1–R16, dosing, GI model, occasion envelope, aggregation, and the pure trial helpers (dwell bucketing, confidence tier, ambient-storage gate) that §13 fixtures (o2), (p), (q) assert. Golden fixtures green.
 - **M2 — API + core UI (week 2):** recipe builder with custom foods and measured-pH entry, formulation setup with application foods, verdict screen with the GI strip, four headline states, and the envelope panel.
 - **M3 — Variants, compare, DB editor, report (week 3):** auto-variants, side-by-side compare, proposals inbox, stale-evaluation banner, print report, Docker compose polish.
 - **M4 — Kitchen trial (week 4):** protocol generation, batch and observation capture, storage gate, symptom entry with live dose math, predicted-vs-observed on the verdict screen, report honesty split.
