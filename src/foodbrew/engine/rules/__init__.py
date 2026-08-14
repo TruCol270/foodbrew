@@ -2,8 +2,17 @@
 
 Every rule module exposes exactly three names:
     RULE_ID: str          e.g. "R1"
-    ADVISORY: bool        static default; R12 overrides per-finding at runtime
+    ADVISORY: bool         static default
     evaluate(ctx) -> list[RuleFinding]
+
+ADVISORY is each module's static default, used to build HEADLINE_RULE_IDS /
+ADVISORY_RULE_IDS below. Some modules override it per finding at runtime
+(plan deviation #4): R12 sets `advisory=` explicitly on every finding it
+emits (its per-enzyme temperature promotion); R2, R7, and R11 set it on just
+the one CANNOT_ASSESS branch caused by a permanently-unconfirmed enzyme-level
+static field, leaving every other branch headline-capable. Aggregation in
+flags.py reads each finding's own `.advisory` flag, not this module-level
+default, so per-finding overrides always take precedence.
 
 R13 has no module: spec §6.1 defines it as the aggregation and format
 recommendation, which live in flags.py.

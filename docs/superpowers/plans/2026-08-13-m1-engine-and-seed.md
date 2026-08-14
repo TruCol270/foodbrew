@@ -6568,11 +6568,11 @@ Before declaring M1 done, all of the following must hold:
 
 - [ ] `.venv/bin/pytest -q` passes with zero failures and zero skips.
 - [ ] `.venv/bin/ruff check src tests` is clean.
-- [ ] Every golden fixture (a)–(q) in `tests/test_golden_fixtures.py` passes **against the real shipped seed catalogue**, with the two documented exceptions (fixture (b)'s R1 verdict; explicit `user_provided` pH and load inputs).
+- [ ] Every golden fixture (a)–(q) in `tests/test_golden_fixtures.py` passes **against the real shipped seed catalogue**, with the five documented deviations (fixture (b)'s R1 verdict; explicit `user_provided` pH and load inputs; the R2 lactase test correction; R2/R7/R11's per-field advisory treatment; fixtures (b)/(h)/(l)/(p0)'s additional test-input setup).
 - [ ] `tests/engine/test_purity.py` passes — nothing in `engine/` imports I/O or persistence.
 - [ ] The prohibited-words assertion passes on every engine message.
 - [ ] `docker compose run --rm foodbrew` produces a populated database.
-- [ ] The two spec deviations in this plan's header have been raised with the spec owner and either accepted or corrected in the spec.
+- [ ] The five spec deviations in this plan's header have been raised with the spec owner and either accepted or corrected in the spec — deviation #4 (R2/R7/R11 advisory treatment) in particular, since it's a real rule-behavior change with product impact, not just a test correction.
 
 **Do not begin M2 until these pass.** The spec's planning note (§14) exists because the R12 problem was invisible until rules were traced end-to-end against real seed data; the same is likely true of the §6.3.1 severity tiers and the §6.7 wet-ingredient threshold.
 
