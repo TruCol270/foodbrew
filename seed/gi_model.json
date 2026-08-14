@@ -1,0 +1,11 @@
+{
+  "$comment": "Spec §8. Source: Enzyme Site of Action deck (08.07.2026), slides 2 and 3.",
+  "regions": [
+    {"id": "mouth", "name": "Mouth", "ph_low": 6.2, "ph_high": 7.6, "order": 1, "dormant": true, "transit_note": "Dwell is seconds — too brief for any enzyme to react regardless of pH fit."},
+    {"id": "stomach_fasting", "name": "Stomach, fasting", "ph_low": 1.5, "ph_high": 2.0, "order": 2, "dormant": false, "transit_note": "Only acid-tolerant enzymes are active before food buffers the pH up."},
+    {"id": "stomach_fed", "name": "Stomach, after eating", "ph_low": 4.0, "ph_high": 6.0, "order": 3, "dormant": false, "transit_note": "The main workhorse zone. Food buffers pH up, then it drifts back down over roughly two hours."},
+    {"id": "duodenum", "name": "Duodenum", "ph_low": 6.0, "ph_high": 6.5, "order": 4, "dormant": false, "transit_note": "Fungal lactase has dropped out above its 5.4 ceiling; inulinase is fading."},
+    {"id": "jejunum_ileum", "name": "Jejunum / ileum", "ph_low": 7.0, "ph_high": 7.5, "order": 5, "dormant": false, "transit_note": "Xylose isomerase's prime window."},
+    {"id": "colon", "name": "Colon", "ph_low": 5.5, "ph_high": 7.0, "order": 6, "dormant": false, "transit_note": "Too late — undigested substrate is fermented here, which is the symptom mechanism."}
+  ]
+}
