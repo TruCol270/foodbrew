@@ -9,8 +9,8 @@ ADVISORY = False
 
 #: Shown alongside every R11 finding: finished-product rules are out of scope.
 SCOPE_BANNER = (
-    "Finished-product rules — food safety and acidified-food regulations — are outside "
-    "this tool's scope."
+    "Finished-product rules — food-contact compliance and acidified-food regulations — are "
+    "outside this tool's scope."
 )
 
 
