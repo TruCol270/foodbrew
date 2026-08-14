@@ -123,3 +123,157 @@ class RuleFinding:
     #: True when this finding must not influence the headline (spec §6.4).
     #: R12 sets this per-enzyme rather than statically.
     advisory: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Substrate:
+    """Spec §5.1."""
+
+    id: str
+    name: str
+    native_human_enzyme: bool = False
+    is_prebiotic: bool = False
+    no_commercial_enzyme: bool = False
+    notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class StructuralEntry:
+    """One entry of enzyme.degrades_structural_json (spec §6.3.1)."""
+
+    structural_class: StructuralClass
+    tier: SeverityTier
+
+
+@dataclass(frozen=True, slots=True)
+class Enzyme:
+    """Spec §5.1. Every numeric field is Tracked."""
+
+    id: str
+    name: str
+    substrate_id: str
+    source_type: str
+    priority: str
+    deadline: Deadline
+    ph_min: Tracked
+    ph_max: Tracked
+    ph_opt_low: Tracked
+    ph_opt_high: Tracked
+    ph_shelf_stable_min: Tracked
+    dose_unit: str
+    aliases: tuple[str, ...] = ()
+    site_of_action: str = ""
+    temp_min_c: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    temp_max_c: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    temp_opt_c: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    dose_min: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    dose_max: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    dose_evidence_threshold: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    dose_benchmark_note: str = ""
+    is_protease: bool = False
+    is_natural_source: bool = False
+    is_gras: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    food_grade_note: str = ""
+    heat_labile_note: str = ""
+    degrades_structural: tuple[StructuralEntry, ...] = ()
+    cost_tier: str = ""
+    supplier_note: str = ""
+    notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Food:
+    """Spec §5.1 — one table, role-flagged, because records serve several roles."""
+
+    id: str
+    name: str
+    category: str
+    is_recipe_ingredient: bool = False
+    is_trigger_food: bool = False
+    is_application_food: bool = False
+    ph: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    water_content_pct: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    contains_substrate_ids: tuple[str, ...] = ()
+    typical_load_value: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    typical_load_unit: str = ""
+    contains_protease: bool = False
+    is_heat_processed: bool = False
+    structural: tuple[StructuralClass, ...] = ()
+    notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GIRegion:
+    """Spec §8."""
+
+    id: str
+    name: str
+    ph_low: float
+    ph_high: float
+    order: int
+    dormant: bool = False
+    transit_note: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeIngredient:
+    food_id: str
+    amount_g: float
+    order: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class SelectedEnzyme:
+    """Spec §5.2 formulation.enzyme_selection_json."""
+
+    enzyme_id: str
+    dose: float | None = None
+    phase: Phase = Phase.DRY
+    encapsulated: bool = False
+    source_choice: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessStep:
+    """Spec §5.2 formulation.process_steps_json."""
+
+    order: int
+    label: str
+    is_heat: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Formulation:
+    """Spec §5.2."""
+
+    id: str
+    format: Format
+    recipe: tuple[RecipeIngredient, ...]
+    enzymes: tuple[SelectedEnzyme, ...]
+    target_trigger_food_ids: tuple[str, ...] = ()
+    application_food_ids: tuple[str, ...] = ()
+    dwell_profile: DwellProfile | None = None
+    serving_size_g: float | None = None
+    measured_ph: Tracked = Tracked(None, TruthLabel.UNCONFIRMED)
+    process_steps: tuple[ProcessStep, ...] = ()
+    enzyme_addition_index: int | None = None
+    parent_formulation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class EvalContext:
+    """Everything a rule may read. Hydrated by the caller; the engine never loads it."""
+
+    formulation: Formulation
+    enzymes: Mapping[str, Enzyme]
+    foods: Mapping[str, Food]
+    substrates: Mapping[str, Substrate]
+    gi_regions: tuple[GIRegion, ...] = ()
+    #: Most recent trial batch pH for this formulation, if any (spec §6.7).
+    latest_trial_ph: Tracked | None = None
+
+    def selected_enzymes(self) -> tuple[SelectedEnzyme, ...]:
+        return self.formulation.enzymes
+
+    def enzyme_for(self, selected: SelectedEnzyme) -> Enzyme:
+        return self.enzymes[selected.enzyme_id]
