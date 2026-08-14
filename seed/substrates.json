@@ -1,0 +1,17 @@
+{
+  "$comment": "Spec §9.2. Source: Formulation Knowledge Base §3 substrate-to-food map.",
+  "substrates": [
+    {"id": "lactose", "name": "Lactose", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Body's own lactase commonly declines by adulthood."},
+    {"id": "gos", "name": "GOS (raffinose, stachyose)", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": "No native human enzyme — hard colon deadline."},
+    {"id": "inulin_fructan", "name": "Inulin-type fructans", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": "No native human enzyme. Garlic and onion carry more short-chain fructans than inulin."},
+    {"id": "graminan_fructan", "name": "Graminan-type fructans", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": "Wheat, barley, rye."},
+    {"id": "excess_fructose", "name": "Excess fructose", "native_human_enzyme": false, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Absorbed via a narrower fructose-only pathway."},
+    {"id": "polyol", "name": "Polyols (sorbitol, mannitol)", "native_human_enzyme": false, "is_prebiotic": false, "no_commercial_enzyme": true, "notes": "No commercial enzyme exists. KB Table A: limited / under development."},
+    {"id": "protein", "name": "Dietary protein", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Pepsin plus pancreatic proteases already digest protein thoroughly — supplementing is additive."},
+    {"id": "fat", "name": "Dietary fat", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Lingual, gastric and pancreatic lipase already cover most fat digestion."},
+    {"id": "sucrose", "name": "Sucrose", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": ""},
+    {"id": "starch", "name": "Starch", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": ""},
+    {"id": "fiber", "name": "Insoluble fiber", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": ""},
+    {"id": "pectin", "name": "Pectin", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": ""}
+  ]
+}
