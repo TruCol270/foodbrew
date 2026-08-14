@@ -1,4 +1,5 @@
-from foodbrew.engine.flags import HEADLINE_DISPLAY, aggregate
+from foodbrew.engine import ValidationRejection
+from foodbrew.engine.flags import HEADLINE_DISPLAY, aggregate, group_findings
 from foodbrew.engine.types import DwellProfile, RuleFinding, Verdict
 
 
@@ -81,3 +82,35 @@ def test_findings_are_grouped_for_display():
     assert [f.rule_id for f in result.data_gaps] == ["R7"]
     assert [f.rule_id for f in result.cautions] == ["R4"]
     assert [f.rule_id for f in result.advisories] == ["R9"]
+
+
+def test_validation_rejection_is_importable_from_the_engine_package():
+    assert issubclass(ValidationRejection, ValueError)
+
+
+def test_group_findings_splits_by_verdict_and_excludes_advisories():
+    findings = (
+        RuleFinding("R1", Verdict.RED, "blocker"),
+        RuleFinding("R7", Verdict.CANNOT_ASSESS, "gap"),
+        RuleFinding("R4", Verdict.AMBER, "caution"),
+        RuleFinding("R3", Verdict.PASS, "fine"),
+        RuleFinding("R9", Verdict.AMBER, "advice", advisory=True),
+    )
+    groups = group_findings(findings)
+    assert [f.rule_id for f in groups.blockers] == ["R1"]
+    assert [f.rule_id for f in groups.data_gaps] == ["R7"]
+    assert [f.rule_id for f in groups.cautions] == ["R4"]
+    assert [f.rule_id for f in groups.advisories] == ["R9"]
+
+
+def test_aggregate_reports_the_same_groups_as_group_findings():
+    findings = (
+        RuleFinding("R1", Verdict.RED, "blocker"),
+        RuleFinding("R9", Verdict.AMBER, "advice", advisory=True),
+    )
+    envelope = {p: Verdict.PASS for p in DwellProfile}
+    agg = aggregate(findings, envelope, None)
+    groups = group_findings(findings)
+    assert (agg.blockers, agg.data_gaps, agg.cautions, agg.advisories) == (
+        groups.blockers, groups.data_gaps, groups.cautions, groups.advisories,
+    )

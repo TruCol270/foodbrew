@@ -27,6 +27,31 @@ class Aggregation:
     advisories: tuple[RuleFinding, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class FindingGroups:
+    """Spec §10 screen 4 — Blockers / Data gaps / Cautions / Advisory."""
+
+    blockers: tuple[RuleFinding, ...]
+    data_gaps: tuple[RuleFinding, ...]
+    cautions: tuple[RuleFinding, ...]
+    advisories: tuple[RuleFinding, ...]
+
+
+def group_findings(findings: Sequence[RuleFinding]) -> FindingGroups:
+    """Split findings the way the verdict screen and the stored evaluation both need.
+
+    Defined once here because the read path (store/evaluations.py) reconstructs
+    the groups from stored rows without re-running aggregation.
+    """
+    non_advisory = [f for f in findings if not f.advisory]
+    return FindingGroups(
+        blockers=tuple(f for f in non_advisory if f.verdict is Verdict.RED),
+        data_gaps=tuple(f for f in non_advisory if f.verdict is Verdict.CANNOT_ASSESS),
+        cautions=tuple(f for f in non_advisory if f.verdict is Verdict.AMBER),
+        advisories=tuple(f for f in findings if f.advisory),
+    )
+
+
 def aggregate(
     findings: Sequence[RuleFinding],
     envelope: Mapping[DwellProfile, Verdict],
@@ -44,14 +69,13 @@ def aggregate(
     headline_verdicts.append(headline_contribution(envelope, declared_profile))
     overall = worst(headline_verdicts)
 
-    advisories = tuple(f for f in findings if f.advisory)
-    non_advisory = [f for f in findings if not f.advisory]
+    groups = group_findings(findings)
 
     return Aggregation(
         overall=overall,
         display=HEADLINE_DISPLAY[overall],
-        blockers=tuple(f for f in non_advisory if f.verdict is Verdict.RED),
-        data_gaps=tuple(f for f in non_advisory if f.verdict is Verdict.CANNOT_ASSESS),
-        cautions=tuple(f for f in non_advisory if f.verdict is Verdict.AMBER),
-        advisories=advisories,
+        blockers=groups.blockers,
+        data_gaps=groups.data_gaps,
+        cautions=groups.cautions,
+        advisories=groups.advisories,
     )
