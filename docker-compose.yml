@@ -1,0 +1,9 @@
+services:
+  foodbrew:
+    build: .
+    volumes:
+      # SQLite lives in a bind mount so backup is a folder copy and the same
+      # image deploys to Fly.io later with a volume instead.
+      - ./data:/data
+    environment:
+      FOODBREW_DB_PATH: /data/foodbrew.db
