@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 
 from foodbrew.engine.types import RuleFinding, Tracked, TruthLabel, Verdict, worst
@@ -26,6 +28,14 @@ def test_all_evidence_labels_are_usable(label):
     assert Tracked(value=1.0, status=label, source="x").usable is True
 
 
+def test_calculated_is_not_usable():
+    # CALCULATED is an engine output, never a rule input (see types.py comment
+    # above _EVIDENCE_LABELS) — it must not satisfy `usable` like the other
+    # value-bearing labels do.
+    t = Tracked(value=1.0, status=TruthLabel.CALCULATED, source="engine")
+    assert t.usable is False
+
+
 def test_worst_orders_red_above_cannot_assess_above_amber_above_pass():
     assert worst([Verdict.PASS, Verdict.AMBER]) is Verdict.AMBER
     assert worst([Verdict.AMBER, Verdict.CANNOT_ASSESS]) is Verdict.CANNOT_ASSESS
@@ -35,5 +45,5 @@ def test_worst_orders_red_above_cannot_assess_above_amber_above_pass():
 
 def test_rule_finding_is_frozen():
     f = RuleFinding(rule_id="R1", verdict=Verdict.RED, message="m", evidence={})
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         f.verdict = Verdict.PASS

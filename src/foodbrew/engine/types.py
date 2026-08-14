@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Mapping
+from enum import StrEnum
+from typing import Any
 
 
-class TruthLabel(str, Enum):
+class TruthLabel(StrEnum):
     """Spec §5.4. Closed enum — no other token may appear in seed, API, or UI."""
 
     CONFIRMED = "confirmed"
@@ -19,12 +20,10 @@ class TruthLabel(str, Enum):
 
 #: Labels that count as evidence a rule may act on. UNCONFIRMED never does;
 #: CALCULATED is an engine output and is never a rule *input*.
-_EVIDENCE_LABELS = frozenset(
-    {TruthLabel.CONFIRMED, TruthLabel.USER_PROVIDED, TruthLabel.OBSERVED}
-)
+_EVIDENCE_LABELS = frozenset({TruthLabel.CONFIRMED, TruthLabel.USER_PROVIDED, TruthLabel.OBSERVED})
 
 
-class Verdict(str, Enum):
+class Verdict(StrEnum):
     """Spec §6. Severity order is defined by _SEVERITY below."""
 
     PASS = "pass"
@@ -45,7 +44,7 @@ def worst(verdicts) -> Verdict:
     return max(items, key=lambda v: _SEVERITY[v])
 
 
-class DwellProfile(str, Enum):
+class DwellProfile(StrEnum):
     """Spec §6.3."""
 
     IMMEDIATE = "immediate"
@@ -53,7 +52,7 @@ class DwellProfile(str, Enum):
     MARINADE = "marinade"
 
 
-class StructuralClass(str, Enum):
+class StructuralClass(StrEnum):
     """Spec §5.1 food.structural_json / enzyme.degrades_structural_json."""
 
     PECTIN_CELLULOSE = "pectin_cellulose"
@@ -61,7 +60,7 @@ class StructuralClass(str, Enum):
     STARCH = "starch"
 
 
-class SeverityTier(str, Enum):
+class SeverityTier(StrEnum):
     """Spec §6.3.1."""
 
     RAPID = "rapid"
@@ -69,7 +68,7 @@ class SeverityTier(str, Enum):
     UNCONFIRMED = "unconfirmed"
 
 
-class Format(str, Enum):
+class Format(StrEnum):
     """Spec §5.2 formulation.format."""
 
     PREMIXED_WET = "premixed_wet"
@@ -78,14 +77,14 @@ class Format(str, Enum):
     ENCAPSULATED_IN_WET = "encapsulated_in_wet"
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     """Which side of the pack an enzyme sits on."""
 
     WET = "wet"
     DRY = "dry"
 
 
-class Deadline(str, Enum):
+class Deadline(StrEnum):
     """Spec §5.1 enzyme.deadline."""
 
     BEFORE_SMALL_INTESTINE = "before_small_intestine"
