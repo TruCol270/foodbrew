@@ -1,0 +1,16 @@
+:root {
+  --red: #b3261e; --amber: #9a6700; --gray: #5c5f66; --green: #1a7f37;
+  --line: #d7d9dd; --bg: #ffffff; --muted: #f5f6f7;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body { margin: 0; color: #1b1c1e; background: var(--bg); }
+.app { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+header { display: flex; gap: 1rem; align-items: baseline; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; text-decoration: none; color: inherit; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
+         color: var(--gray); font-size: 0.85rem; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
+fieldset { border: 1px solid var(--line); margin: 1rem 0; }
+label { display: block; margin: 0.4rem 0; }
+.error { color: var(--red); border: 1px solid var(--red); padding: 0.75rem; border-radius: 4px; }
