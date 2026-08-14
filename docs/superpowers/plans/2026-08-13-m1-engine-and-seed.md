@@ -12,13 +12,15 @@
 
 ---
 
-## Two spec deviations this plan resolves
+## Spec deviations this plan resolves
 
-Both were found while tracing the spec's own fixtures against its own rule text. Implement as described here; flag to the spec owner at M1 review.
+Found while tracing the spec's own fixtures/tests against its own rule text. Implement as described here; flag to the spec owner at M1 review.
 
 **1. Fixture (b) says "R1 pass" but R1's rule text produces AMBER.** R1 (§6.1) states: "within range but outside `ph_opt` → AMBER (sluggish, recoverable)". Fungal lactase has `ph_opt` 5.0; fixture (b) supplies recipe pH 4.4, which is inside the 2.5–5.4 activity range but below optimum. By the rule text that is AMBER, not pass. **This plan implements the rule text and asserts R1 = AMBER in fixture (b).** The fixture's headline assertion is unaffected — R1 AMBER, R4 AMBER, R8 AMBER still aggregate to AMBER — so KB §4m's three-tier heuristic is still reproduced. Changing R1 instead would require inventing an unsourced tolerance band around the optimum.
 
 **2. "Golden fixtures run against the real shipped seed catalog" needs a stated boundary.** Fixtures (a) and (b) already supply recipe pH as an "explicit test input", because every seeded food pH is `unconfirmed` (§9.3). The same is true of trigger-food substrate loads, which R7 needs. **Fixtures therefore supply `measured_ph` and per-food `typical_load_value` as explicit `user_provided` test inputs, and take everything else — every enzyme record in particular — from the real shipped seed.** This preserves what the "real seed catalog" instruction was protecting against (the R12 class of bug, where a rule silently reads unconfirmed enzyme data), while letting fixtures assert anything at all. Fixture (m) additionally uses one synthetic enzyme record, as §6.3.1 requires.
+
+**3. Task 12's own R2 unit test says "lactase passes" but R2's rule text, run against the real seeded GI model, produces AMBER.** Fungal lactase's pH range (2.5–5.4) is tested with deadline `BEFORE_SMALL_INTESTINE`, i.e. against the region set `{mouth, stomach_fasting, stomach_fed}`. `mouth` is dormant (excluded). `stomach_fasting` is pH 1.5–2.0 in the real `seed/gi_model.json` — it does not overlap 2.5–5.4. Only `stomach_fed` (pH 4.0–6.0) overlaps, i.e. exactly one active region before the deadline, which R2's own Step-3 logic (`elif len(active_before) == 1: AMBER`) correctly classifies as AMBER, not PASS — the same "single narrow window, little margin" case the rule text is written to catch. **This plan implements R2's rule text unchanged and corrects the test to assert AMBER** (renamed `test_lactase_amber_with_single_region_coverage`), mirroring deviation #1: the plan's literal rule logic is the source of truth over a test assertion written assuming two-region coverage the real seed doesn't provide. No golden fixture (a)–(q) asserts R2 for fungal lactase specifically, so no downstream fixture is affected.
 
 ---
 
