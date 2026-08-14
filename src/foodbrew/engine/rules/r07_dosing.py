@@ -1,4 +1,15 @@
-"""R7 — dosing vs substrate load (spec §6.1, KB §4g)."""
+"""R7 — dosing vs substrate load (spec §6.1, KB §4g).
+
+Headline-capable by default. Two of its three CANNOT_ASSESS causes are
+per-formulation inputs the founder can supply (the trigger food's substrate
+load, the enzyme's dose) and are meant to gray the headline until she does —
+see test_h_headline_capable_cannot_assess_does_gray_the_headline. The third,
+dose_evidence_threshold, is a static catalogue field: it is unconfirmed for 11
+of the 12 shipped enzymes (no independent full-dose study exists for most of
+them yet). Headline-capable against that catalogue would gray almost every
+formulation regardless of merit, the same failure shape R12 was redesigned to
+avoid — so only that branch is advisory.
+"""
 
 from __future__ import annotations
 
@@ -58,7 +69,7 @@ def evaluate(ctx: EvalContext) -> list[RuleFinding]:
                     f"dose_evidence_threshold is unconfirmed. Ask the supplier, or find "
                     f"an independent full-dose study.",
                     {"missing_field": f"{enzyme.id}.dose_evidence_threshold"},
-                    enzyme_id=enzyme.id,
+                    enzyme_id=enzyme.id, advisory=True,
                 )
             )
             continue

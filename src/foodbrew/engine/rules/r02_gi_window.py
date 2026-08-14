@@ -1,4 +1,15 @@
-"""R2 — GI window vs deadline (spec §6.1, KB §4a and §4h)."""
+"""R2 — GI window vs deadline (spec §6.1, KB §4a and §4h).
+
+Headline-capable by default (missing per-formulation inputs, like an unconfirmed
+recipe pH elsewhere in the engine, are supposed to gray the headline). But an
+enzyme's own pH range is a static catalogue field, not a per-formulation input —
+and it is unconfirmed for half the shipped seed (6 of 12 enzymes; KB Table A lists
+the enzyme with no Table B range). Were that case headline-capable, most
+formulations using those enzymes would come out GRAY regardless of merit, the
+same failure shape R12 was redesigned to avoid. So this one CANNOT_ASSESS branch
+is advisory; every other R2 finding (including CANNOT_ASSESS caused by
+formulation-level gaps elsewhere in the engine) stays headline-capable.
+"""
 
 from __future__ import annotations
 
@@ -22,7 +33,7 @@ def evaluate(ctx: EvalContext) -> list[RuleFinding]:
                     f"{enzyme.name}: cannot map its active window against the digestive "
                     f"tract because its pH range is unconfirmed. Confirm with the supplier.",
                     {"missing_field": f"{enzyme.id}.ph_min/ph_max"},
-                    enzyme_id=enzyme.id,
+                    enzyme_id=enzyme.id, advisory=True,
                 )
             )
             continue

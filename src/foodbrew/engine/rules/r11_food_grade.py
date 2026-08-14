@@ -1,4 +1,12 @@
-"""R11 — food-grade and GRAS status (spec §6.1, KB §4l)."""
+"""R11 — food-grade and GRAS status (spec §6.1, KB §4l).
+
+Headline-capable by default. is_gras is a static catalogue field, unconfirmed
+for 10 of the 12 shipped enzymes (GRAS status was never a research target for
+most of them, only flagship enzymes). Headline-capable against that catalogue
+would gray almost every formulation regardless of merit, the same failure
+shape R12 was redesigned to avoid — so only the unconfirmed-is_gras branch is
+advisory; a confirmed non-GRAS enzyme still reds the headline as before.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +36,7 @@ def evaluate(ctx: EvalContext) -> list[RuleFinding]:
                     f"{enzyme.name}: GRAS status is not recorded. Ask the supplier whether "
                     f"this enzyme is food grade and GRAS-affirmed, and at what cost tier — "
                     f"food grade costs more than technical grade. {SCOPE_BANNER}",
-                    evidence, enzyme_id=enzyme.id,
+                    evidence, enzyme_id=enzyme.id, advisory=True,
                 )
             )
         elif enzyme.is_gras.value:
