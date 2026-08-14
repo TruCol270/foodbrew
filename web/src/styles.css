@@ -14,3 +14,18 @@ th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(
 fieldset { border: 1px solid var(--line); margin: 1rem 0; }
 label { display: block; margin: 0.4rem 0; }
 .error { color: var(--red); border: 1px solid var(--red); padding: 0.75rem; border-radius: 4px; }
+
+.headline { font-size: 1.4rem; font-weight: 700; padding: 0.6rem 0.8rem; border-radius: 4px; }
+.headline--red { color: var(--red); border: 2px solid var(--red); }
+.headline--amber { color: var(--amber); border: 2px solid var(--amber); }
+.headline--gray { color: var(--gray); border: 2px solid var(--gray); }
+.headline--green { color: var(--green); border: 2px solid var(--green); }
+.verdict--red { color: var(--red); } .verdict--amber { color: var(--amber); }
+.verdict--cannot_assess { color: var(--gray); } .verdict--pass { color: var(--green); }
+.truth--unconfirmed { color: var(--gray); }
+.truth__label { color: var(--gray); }
+.blurb { color: var(--gray); font-size: 0.9rem; }
+.region--dormant, .cell--inactive { color: var(--gray); background: var(--muted); }
+.cell--active { color: var(--green); font-weight: 600; }
+.cell--past-deadline { opacity: 0.55; }
+.dose-card { border: 1px solid var(--line); padding: 0.75rem; margin: 0.75rem 0; }
