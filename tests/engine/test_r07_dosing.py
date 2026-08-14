@@ -1,7 +1,17 @@
 from foodbrew.engine.rules import r07_dosing as r7
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    SelectedEnzyme, Substrate, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Substrate,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 SUBSTRATES = {"gos": Substrate(id="gos", name="GOS", is_prebiotic=True)}

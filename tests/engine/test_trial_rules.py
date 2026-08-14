@@ -1,26 +1,33 @@
 import pytest
 
 from foodbrew.engine.trial_rules import (
-    ACIDIFIED_FOOD_PH_LIMIT, ConfidenceTier, ambient_storage_allowed, confidence_tier,
+    ACIDIFIED_FOOD_PH_LIMIT,
+    ConfidenceTier,
+    ambient_storage_allowed,
+    confidence_tier,
 )
 
 
 def test_default_observation_is_an_anecdote():
     # Spec §13 fixture (p) — solo, unblinded, no control.
-    assert confidence_tier(was_blinded=False, had_undressed_control=False) is ConfidenceTier.ANECDOTE
+    tier = confidence_tier(was_blinded=False, had_undressed_control=False)
+    assert tier is ConfidenceTier.ANECDOTE
 
 
 def test_blinding_upgrades_to_suggestive():
-    assert confidence_tier(was_blinded=True, had_undressed_control=False) is ConfidenceTier.SUGGESTIVE
+    tier = confidence_tier(was_blinded=True, had_undressed_control=False)
+    assert tier is ConfidenceTier.SUGGESTIVE
 
 
 def test_undressed_control_upgrades_to_suggestive():
-    assert confidence_tier(was_blinded=False, had_undressed_control=True) is ConfidenceTier.SUGGESTIVE
+    tier = confidence_tier(was_blinded=False, had_undressed_control=True)
+    assert tier is ConfidenceTier.SUGGESTIVE
 
 
 def test_both_flags_still_only_reach_suggestive():
     # Nothing recorded at home is ever demonstrated, proven, or validated.
-    assert confidence_tier(was_blinded=True, had_undressed_control=True) is ConfidenceTier.SUGGESTIVE
+    tier = confidence_tier(was_blinded=True, had_undressed_control=True)
+    assert tier is ConfidenceTier.SUGGESTIVE
 
 
 def test_no_tier_stronger_than_suggestive_exists():

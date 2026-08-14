@@ -1,7 +1,14 @@
 from foodbrew.engine.rules import r03_no_heat as r3
 from foodbrew.engine.types import (
-    EvalContext, Food, Format, Formulation, Phase, ProcessStep,
-    RecipeIngredient, SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    ProcessStep,
+    RecipeIngredient,
+    SelectedEnzyme,
+    Verdict,
 )
 
 

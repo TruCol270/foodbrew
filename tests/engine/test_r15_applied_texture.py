@@ -1,8 +1,20 @@
 from foodbrew.engine.rules import r15_applied_texture as r15
 from foodbrew.engine.types import (
-    Deadline, DwellProfile, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    SelectedEnzyme, SeverityTier, StructuralClass, StructuralEntry, Tracked,
-    TruthLabel, Verdict,
+    Deadline,
+    DwellProfile,
+    Enzyme,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    SeverityTier,
+    StructuralClass,
+    StructuralEntry,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 

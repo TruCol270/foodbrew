@@ -1,7 +1,10 @@
 import pytest
 
 from foodbrew.engine.texture import (
-    SEVERITY_TABLE, dwell_bucket, headline_contribution, verdict_for_tier,
+    SEVERITY_TABLE,
+    dwell_bucket,
+    headline_contribution,
+    verdict_for_tier,
 )
 from foodbrew.engine.types import DwellProfile, SeverityTier, Verdict
 

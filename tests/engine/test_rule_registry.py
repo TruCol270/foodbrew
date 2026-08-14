@@ -1,4 +1,4 @@
-from foodbrew.engine.rules import ADVISORY_RULE_IDS, HEADLINE_RULE_IDS, ALL_RULES
+from foodbrew.engine.rules import ADVISORY_RULE_IDS, ALL_RULES, HEADLINE_RULE_IDS
 
 
 def test_registry_is_ordered_r1_through_r16_without_r13():

@@ -2,8 +2,19 @@ from foodbrew.engine.rules import r08_taste_drift as r8
 from foodbrew.engine.rules import r09_prebiotic_tension as r9
 from foodbrew.engine.rules import r10_strain_blending as r10
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    RecipeIngredient, SelectedEnzyme, Substrate, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    RecipeIngredient,
+    SelectedEnzyme,
+    Substrate,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 SUBSTRATES = {

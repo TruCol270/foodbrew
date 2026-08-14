@@ -8,7 +8,11 @@ from __future__ import annotations
 
 from foodbrew.engine.texture import verdict_for_tier
 from foodbrew.engine.types import (
-    DwellProfile, EvalContext, RuleFinding, Verdict, worst,
+    DwellProfile,
+    EvalContext,
+    RuleFinding,
+    Verdict,
+    worst,
 )
 
 RULE_ID = "R15"

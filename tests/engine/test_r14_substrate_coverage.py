@@ -2,8 +2,18 @@ import pytest
 
 from foodbrew.engine.rules import r14_substrate_coverage as r14
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    SelectedEnzyme, Substrate, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Substrate,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 SUBSTRATES = {

@@ -2,7 +2,12 @@ import pytest
 
 from foodbrew.engine.rules import r04_water_activation as r4
 from foodbrew.engine.types import (
-    EvalContext, Format, Formulation, Phase, SelectedEnzyme, Verdict,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Verdict,
 )
 
 

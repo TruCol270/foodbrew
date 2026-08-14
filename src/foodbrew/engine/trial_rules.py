@@ -6,7 +6,7 @@ are testable without a database and cannot be bypassed by a form.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 #: 21 CFR 114 acidified-foods line, cited in the founder's condiment materials.
 #: Above this, a low-acid product left at room temperature is a food-safety
@@ -14,7 +14,7 @@ from enum import Enum
 ACIDIFIED_FOOD_PH_LIMIT = 4.6
 
 
-class ConfidenceTier(str, Enum):
+class ConfidenceTier(StrEnum):
     """Spec §6.6. Deliberately only two values — nothing recorded at home is
     ever demonstrated, proven, or validated."""
 

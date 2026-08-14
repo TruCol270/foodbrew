@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 from foodbrew.engine.texture import headline_contribution
 from foodbrew.engine.types import DwellProfile, RuleFinding, Verdict, worst

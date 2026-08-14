@@ -1,7 +1,17 @@
 from foodbrew.engine.rules import r05_protease_conflict as r5
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    RecipeIngredient, SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Food,
+    Format,
+    Formulation,
+    Phase,
+    RecipeIngredient,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 

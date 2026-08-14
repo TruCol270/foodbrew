@@ -1,7 +1,15 @@
 from foodbrew.engine.rules import r02_gi_window as r2
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Format, Formulation, Phase,
-    SelectedEnzyme, Substrate, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 from foodbrew.seedload.loader import load_seed
 

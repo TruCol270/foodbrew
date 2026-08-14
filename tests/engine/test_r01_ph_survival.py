@@ -2,8 +2,16 @@ import pytest
 
 from foodbrew.engine.rules import r01_ph_survival as r1
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Food, Format, Formulation, Phase,
-    SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 FALLBACK_MARGIN = 1.0

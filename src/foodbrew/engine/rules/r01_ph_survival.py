@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from foodbrew.engine.conventions import resolve_recipe_ph
 from foodbrew.engine.types import (
-    EvalContext, Format, Phase, RuleFinding, TruthLabel, Verdict,
+    EvalContext,
+    Format,
+    Phase,
+    RuleFinding,
+    Verdict,
 )
 
 RULE_ID = "R1"

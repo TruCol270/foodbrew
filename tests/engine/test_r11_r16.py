@@ -1,8 +1,16 @@
 from foodbrew.engine.rules import r11_food_grade as r11
 from foodbrew.engine.rules import r16_clean_label as r16
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Format, Formulation, Phase,
-    SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 

@@ -1,7 +1,15 @@
 from foodbrew.engine.rules import r06_encapsulation as r6
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Format, Formulation, Phase,
-    SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 
 LACTASE = Enzyme(

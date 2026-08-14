@@ -4,7 +4,11 @@ from foodbrew import ENGINE_VERSION
 from foodbrew.engine import evaluate
 from foodbrew.engine.rules.r14_substrate_coverage import ValidationRejection
 from foodbrew.engine.types import (
-    EvalContext, Format, Formulation, Phase, SelectedEnzyme, Verdict,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
 )
 from foodbrew.seedload.loader import load_seed
 

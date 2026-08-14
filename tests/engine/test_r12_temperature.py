@@ -1,7 +1,15 @@
 from foodbrew.engine.rules import r12_temperature as r12
 from foodbrew.engine.types import (
-    Deadline, Enzyme, EvalContext, Format, Formulation, Phase,
-    SelectedEnzyme, Tracked, TruthLabel, Verdict,
+    Deadline,
+    Enzyme,
+    EvalContext,
+    Format,
+    Formulation,
+    Phase,
+    SelectedEnzyme,
+    Tracked,
+    TruthLabel,
+    Verdict,
 )
 from foodbrew.seedload.loader import load_seed
 
