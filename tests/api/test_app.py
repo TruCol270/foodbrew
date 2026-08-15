@@ -30,3 +30,32 @@ def test_startup_creates_the_database_if_it_is_missing(tmp_path):
     with TestClient(app) as client:
         assert client.get("/api/v1/enzymes").json()
     assert path.exists()
+
+
+def test_an_unregistered_api_path_stays_a_404_even_with_a_real_web_build(tmp_path):
+    """The `client` fixture mounts no web build, so it never exercises the SPA
+    catch-all's interaction with an api/ prefix. A path that matches no router
+    at all (not '/recipes/nope', which IS registered and 404s from inside its
+    own handler, but a genuinely unknown path like '/api/v1/nope') used to fall
+    through the catch-all and get served index.html with a 200 — this is the
+    regression that guards against it recurring.
+    """
+    from fastapi.testclient import TestClient
+
+    from foodbrew.api.app import create_app
+    from foodbrew.api.settings import Settings
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>spa</html>", encoding="utf-8")
+
+    app = create_app(Settings(db_path=tmp_path / "foodbrew.db", web_dist=dist))
+    with TestClient(app) as client:
+        response = client.get("/api/v1/nope")
+        assert response.status_code == 404
+        assert response.headers["content-type"].startswith("application/json")
+
+        # A genuine client-side route still falls through to index.html.
+        page = client.get("/recipes/new")
+        assert page.status_code == 200
+        assert "spa" in page.text

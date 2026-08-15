@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -59,8 +59,14 @@ def _mount_web(app: FastAPI, settings: Settings) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        # Client-side routes fall through to index.html; /api never does,
-        # because its routes are registered first and match first.
+        # Registration order only protects a REGISTERED /api/v1/... path — it
+        # matches before this catch-all ever runs. An unregistered one (a typo,
+        # a resource id with no route) is not matched by anything else and
+        # would otherwise fall through to index.html with a 200, silently
+        # lying to a client that hit a bad endpoint. Anything under api/ is
+        # therefore refused here explicitly rather than served as a page.
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail=f"No API route '/{full_path}'.")
         candidate = dist / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)
