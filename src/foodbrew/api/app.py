@@ -12,6 +12,7 @@ from foodbrew import ENGINE_VERSION
 from foodbrew.api.routers import (
     catalog,
     evaluations,
+    export,
     formulations,
     proposals,
     recipes,
@@ -48,7 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     for router in (
         catalog.router, recipes.router, formulations.router, evaluations.router,
-        variants.router, records.router, proposals.router,
+        variants.router, records.router, proposals.router, export.router,
     ):
         app.include_router(router, prefix="/api/v1")
 
