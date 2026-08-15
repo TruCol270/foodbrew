@@ -37,6 +37,65 @@ function FieldRow({ name, tracked, onSave }: {
   )
 }
 
+/** The client carries `createProposal`, and the exit walk asks the founder to
+ * raise one from the screen, but nothing else in the plan's file list calls
+ * it — the inbox below only lists what already exists. Filed here, next to
+ * the inbox it feeds, so the "confirmed" path has an on-screen way in. */
+function NewProposalForm({ tables, onSubmit }: {
+  tables: { table_name: 'enzyme' | 'food'; record_id: string; field: string }
+  onSubmit: (proposal: {
+    table_name: string; record_id: string; field: string
+    proposed_value: string; source_citation: string
+  }) => Promise<void>
+}) {
+  const [draft, setDraft] = useState({
+    table_name: tables.table_name, record_id: tables.record_id, field: tables.field,
+    proposed_value: '', source_citation: '',
+  })
+  useEffect(() => {
+    setDraft((prev) => ({
+      ...prev, table_name: tables.table_name, record_id: tables.record_id, field: tables.field,
+    }))
+  }, [tables.table_name, tables.record_id, tables.field])
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      onSubmit(draft).then(() => setDraft((prev) => ({ ...prev, proposed_value: '', source_citation: '' })))
+    }}>
+      <label>
+        Table
+        <select value={draft.table_name} data-testid="proposal-table"
+                onChange={(e) => setDraft({ ...draft, table_name: e.target.value as 'enzyme' | 'food' })}>
+          <option value="enzyme">enzyme</option>
+          <option value="food">food</option>
+        </select>
+      </label>
+      <label>
+        Record id
+        <input value={draft.record_id} data-testid="proposal-record-id"
+               onChange={(e) => setDraft({ ...draft, record_id: e.target.value })} />
+      </label>
+      <label>
+        Field
+        <input value={draft.field} data-testid="proposal-field"
+               onChange={(e) => setDraft({ ...draft, field: e.target.value })} />
+      </label>
+      <label>
+        Proposed value
+        <input value={draft.proposed_value} data-testid="proposal-value"
+               onChange={(e) => setDraft({ ...draft, proposed_value: e.target.value })} />
+      </label>
+      <label>
+        Source citation
+        <input value={draft.source_citation} data-testid="proposal-citation"
+               onChange={(e) => setDraft({ ...draft, source_citation: e.target.value })} />
+      </label>
+      <button type="submit" data-testid="submit-proposal">Send to the inbox</button>
+    </form>
+  )
+}
+
 export default function Database() {
   const [enzymes, setEnzymes] = useState<Enzyme[]>([])
   const [foods, setFoods] = useState<Food[]>([])
@@ -111,6 +170,18 @@ export default function Database() {
             </button>
           </>
         )}
+      </fieldset>
+
+      <fieldset>
+        <legend>Propose a confirmed value</legend>
+        <p className="blurb">
+          Raise a value with a source citation. It sits in the inbox below until you
+          approve or reject it — nothing here writes to the record directly.
+        </p>
+        <NewProposalForm
+          tables={{ table_name: 'enzyme', record_id: enzymeId, field: '' }}
+          onSubmit={(proposal) => run(() => api.createProposal(proposal))}
+        />
       </fieldset>
 
       <fieldset>
