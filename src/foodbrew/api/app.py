@@ -9,7 +9,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from foodbrew import ENGINE_VERSION
-from foodbrew.api.routers import catalog, evaluations, formulations, recipes, records, variants
+from foodbrew.api.routers import (
+    catalog,
+    evaluations,
+    formulations,
+    proposals,
+    recipes,
+    records,
+    variants,
+)
 from foodbrew.api.settings import Settings, load_settings
 from foodbrew.db import ensure_database
 from foodbrew.engine import ValidationRejection
@@ -40,7 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     for router in (
         catalog.router, recipes.router, formulations.router, evaluations.router,
-        variants.router, records.router,
+        variants.router, records.router, proposals.router,
     ):
         app.include_router(router, prefix="/api/v1")
 
