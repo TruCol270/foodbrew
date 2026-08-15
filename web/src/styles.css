@@ -34,10 +34,12 @@ label { display: block; margin: 0.4rem 0; }
           background: var(--muted); padding: 0.75rem 1rem; margin: 1rem 0; }
 .banner--stale code { font-size: 0.85em; }
 .row--recommended { background: var(--muted); }
+.row--changed > th { background: var(--muted); font-weight: 600; }
 .cell--changed { background: var(--muted); font-weight: 600; }
 .cell--absent { color: var(--gray); font-style: italic; }
 .editor-field { display: grid; grid-template-columns: 12rem 1fr auto; gap: 0.5rem;
                 align-items: center; margin: 0.25rem 0; }
+.field-error { color: var(--red); }
 
 /* Spec §10 screen 8 — print to PDF. Navigation and controls go; the disclaimer stays. */
 @media print {

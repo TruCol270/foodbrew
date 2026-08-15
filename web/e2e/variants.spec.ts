@@ -79,6 +79,40 @@ test('editing a record makes the earlier verdict say so', async ({ page }) => {
   await expect(page.getByTestId('stale-banner')).toHaveCount(0)
 })
 
+test('a non-numeric field value disables Save instead of silently clearing the record', async ({ page }) => {
+  await page.goto('/database')
+  await page.getByTestId('enzyme-picker').selectOption('lactase_fungal_acid')
+  const field = page.getByTestId('field-ph_shelf_stable_min')
+  const before = await field.inputValue()
+
+  await field.fill('2..5')
+  await expect(page.getByTestId('save-ph_shelf_stable_min')).toBeDisabled()
+
+  // Reload without saving: the record is untouched by the invalid draft.
+  await page.reload()
+  await page.getByTestId('enzyme-picker').selectOption('lactase_fungal_acid')
+  await expect(page.getByTestId('field-ph_shelf_stable_min')).toHaveValue(before)
+})
+
+test('raising a proposal clears the form on success and keeps it on failure', async ({ page }) => {
+  await page.goto('/database')
+  await page.getByTestId('enzyme-picker').selectOption('lactase_fungal_acid')
+
+  // No citation: the server refuses it, and the founder's typing survives.
+  await page.getByTestId('proposal-field').fill('ph_shelf_stable_min')
+  await page.getByTestId('proposal-value').fill('3.5')
+  await page.getByTestId('submit-proposal').click()
+  await expect(page.getByTestId('database-error')).toBeVisible()
+  await expect(page.getByTestId('proposal-value')).toHaveValue('3.5')
+
+  // Add the citation and resubmit: this time it succeeds and clears.
+  await page.getByTestId('proposal-citation').fill('Amano technical datasheet, retrieved 2026-08-15')
+  await page.getByTestId('submit-proposal').click()
+  await expect(page.getByTestId('proposal-value')).toHaveValue('')
+  await expect(page.getByTestId('proposal-citation')).toHaveValue('')
+  await expect(page.locator('table', { hasText: 'ph_shelf_stable_min' })).toContainText('pending')
+})
+
 test('the report prints and offers the markdown', async ({ page }) => {
   await buildAndEvaluate(page)
   await page.getByRole('link', { name: 'Open the printable report' }).click()

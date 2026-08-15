@@ -21,17 +21,24 @@ function FieldRow({ name, tracked, onSave }: {
   useEffect(() => { setDraft(tracked.value === null ? '' : String(tracked.value)) },
             [tracked.value])
 
+  // A typo (e.g. "2..5") makes Number(draft) NaN, which JSON.stringify turns
+  // into null — Save would then silently wipe a confirmed value to
+  // unconfirmed with no error shown. Refuse before that can happen.
+  const invalid = draft !== '' && Number.isNaN(Number(draft))
+
   return (
     <div className="editor-field">
       <label htmlFor={`field-${name}`}>{name}</label>
       <input id={`field-${name}`} data-testid={`field-${name}`} value={draft}
+             aria-invalid={invalid}
              onChange={(e) => setDraft(e.target.value)} />
       <span>
         <TruthValue tracked={tracked} />{' '}
-        <button type="button" data-testid={`save-${name}`}
+        <button type="button" data-testid={`save-${name}`} disabled={invalid}
                 onClick={() => onSave(draft === '' ? null : Number(draft))}>
           Save
         </button>
+        {invalid && <small className="field-error"> not a number — Save is disabled</small>}
       </span>
     </div>
   )
@@ -46,7 +53,7 @@ function NewProposalForm({ tables, onSubmit }: {
   onSubmit: (proposal: {
     table_name: string; record_id: string; field: string
     proposed_value: string; source_citation: string
-  }) => Promise<void>
+  }) => Promise<boolean>
 }) {
   const [draft, setDraft] = useState({
     table_name: tables.table_name, record_id: tables.record_id, field: tables.field,
@@ -61,7 +68,13 @@ function NewProposalForm({ tables, onSubmit }: {
   return (
     <form onSubmit={(e) => {
       e.preventDefault()
-      onSubmit(draft).then(() => setDraft((prev) => ({ ...prev, proposed_value: '', source_citation: '' })))
+      // Only clear the value/citation on a confirmed success — onSubmit
+      // resolving isn't that by itself (run() below never rejects), so a
+      // failed submit (e.g. server-side validation) used to silently wipe
+      // what the founder had just typed.
+      onSubmit(draft).then((ok) => {
+        if (ok) setDraft((prev) => ({ ...prev, proposed_value: '', source_citation: '' }))
+      })
     }}>
       <label>
         Table
@@ -116,9 +129,16 @@ export default function Database() {
   const enzyme = enzymes.find((e) => e.id === enzymeId)
   const food = foods.find((f) => f.id === foodId)
 
-  async function run(work: () => Promise<unknown>) {
+  async function run(work: () => Promise<unknown>): Promise<boolean> {
     setError(null)
-    try { await work(); await reload() } catch (e) { setError((e as Error).message) }
+    try {
+      await work()
+      await reload()
+      return true
+    } catch (e) {
+      setError((e as Error).message)
+      return false
+    }
   }
 
   return (
