@@ -13,7 +13,7 @@ from foodbrew.engine.report import (
     render_markdown,
 )
 from foodbrew.engine.rules import r15_applied_texture
-from foodbrew.engine.types import DwellProfile, Phase, Verdict
+from foodbrew.engine.types import DwellProfile, Phase
 
 
 @pytest.fixture

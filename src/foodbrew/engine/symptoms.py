@@ -11,7 +11,6 @@ benchmark-based; this is the same arithmetic applied to one meal.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 from foodbrew.engine.dosing import assess_dose

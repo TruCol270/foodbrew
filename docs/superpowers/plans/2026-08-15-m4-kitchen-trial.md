@@ -444,7 +444,7 @@ def test_no_observation_type_is_symptom():
 - [ ] **Step 3: Run them**
 
 Run: `.venv/bin/pytest tests/engine/test_observations.py -q`
-Expected: 17 passed.
+Expected: 18 passed (13 test functions, one of which parametrises 5 cases).
 
 - [ ] **Step 4: Commit**
 
@@ -1317,11 +1317,24 @@ def test_an_unknown_food_is_refused_rather_than_guessed(ctx):
 
 
 def test_meeting_the_threshold_is_reported_both_ways(ctx, seed):
+    # The shipped seed leaves lactase_fungal_acid.dose_evidence_threshold
+    # unconfirmed by design (§9.1: no independent full-dose threshold is
+    # published for lactase in the source set; alpha-galactosidase's 300 GALU
+    # is the only confirmed one). tests/test_golden_fixtures.py and
+    # tests/engine/test_views.py both assert that, so this test supplies a
+    # usable threshold explicitly rather than leaning on the seed.
+    catalog = dict(seed.enzymes)
+    catalog["lactase_fungal_acid"] = dataclasses.replace(
+        catalog["lactase_fungal_acid"],
+        dose_evidence_threshold=Tracked(6000.0, TruthLabel.CONFIRMED, "KB Table B"),
+    )
+    context = dataclasses.replace(ctx, enzymes=catalog)
+
     under = dataclasses.replace(
-        ctx,
+        context,
         formulation=dataclasses.replace(
-            ctx.formulation,
-            enzymes=(dataclasses.replace(ctx.formulation.enzymes[0], dose=100.0),),
+            context.formulation,
+            enzymes=(dataclasses.replace(context.formulation.enzymes[0], dose=100.0),),
         ),
     )
     assert computed_dose(
@@ -1330,7 +1343,7 @@ def test_meeting_the_threshold_is_reported_both_ways(ctx, seed):
     ).enzymes[0].meets_threshold is False
 
     assert computed_dose(
-        context=ctx, trigger_food_id="milk", amount_value=1.0,
+        context=context, trigger_food_id="milk", amount_value=1.0,
         amount_unit=SERVINGS, doses_used=1.0,
     ).enzymes[0].meets_threshold is True
 
@@ -1350,7 +1363,7 @@ def test_the_payload_round_trips_as_plain_json(ctx):
 - [ ] **Step 3: Run them**
 
 Run: `.venv/bin/pytest tests/engine/test_symptoms.py -q`
-Expected: 9 passed. If `test_meeting_the_threshold_is_reported_both_ways` fails, check the seeded `dose_evidence_threshold` for `lactase_fungal_acid` — it is the FCC figure from §6.1 R7 and 9,000 clears it.
+Expected: 9 passed. Note that only alpha-galactosidase ships with a confirmed `dose_evidence_threshold` (300 GALU, §6.1 R7); lactase's is `unconfirmed` by design, which is why the both-ways test supplies its own and why `test_an_unconfirmed_threshold_reports_cannot_tell_and_names_the_field` is the *seed-realistic* case.
 
 - [ ] **Step 4: Commit**
 
@@ -3626,6 +3639,15 @@ from foodbrew.engine.language import contains_prohibited
 @pytest.fixture
 def exported(client, vinaigrette):
     def _run():
+        # The seed leaves lactase's dose_evidence_threshold unconfirmed (§9.1),
+        # so every dose line would read "could not be worked out". Enter one
+        # through the M3 database editor FIRST — the founder's own route to a
+        # usable value, stored `user_provided` — because plan decision #7 freezes
+        # the dose math against the snapshot this evaluation is about to take.
+        client.put(
+            "/api/v1/enzymes/lactase_fungal_acid",
+            json={"fields": {"dose_evidence_threshold": 6000.0}},
+        )
         evaluation = client.post(
             f"/api/v1/formulations/{vinaigrette['formulation_id']}/evaluate"
         ).json()
@@ -4941,6 +4963,21 @@ git commit -m "feat(web): the trial screen, and the observed column beside every
 
 ```ts
 import { expect, test } from '@playwright/test'
+
+// The shipped seed leaves lactase's dose_evidence_threshold unconfirmed (§9.1),
+// so the live dose preview would only ever say it cannot work the dose out.
+// Enter one through the database editor before each test — and reset it after,
+// because `enzyme` is shared reference data every other spec reads (the lesson
+// M3's variants.spec.ts learned the hard way).
+test.beforeEach(async ({ request }) => {
+  await request.put('/api/v1/enzymes/lactase_fungal_acid', {
+    data: { fields: { dose_evidence_threshold: 6000 } },
+  })
+})
+
+test.afterEach(async ({ request }) => {
+  await request.post('/api/v1/enzymes/lactase_fungal_acid/reset')
+})
 
 /** Builds golden-fixture (a)'s vinaigrette and stops on its verdict. */
 async function buildAndEvaluate(page: import('@playwright/test').Page) {
