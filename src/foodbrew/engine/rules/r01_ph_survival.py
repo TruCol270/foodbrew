@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from foodbrew.engine.conventions import FALLBACK_MARGIN_PH, resolve_recipe_ph, shelf_stable_floor
+from foodbrew.engine.conventions import (
+    FALLBACK_MARGIN_PH,
+    WET_FORMATS,
+    resolve_recipe_ph,
+    shelf_stable_floor,
+)
 from foodbrew.engine.types import (
     EvalContext,
-    Format,
     Phase,
     RuleFinding,
     Verdict,
@@ -14,12 +18,12 @@ from foodbrew.engine.types import (
 RULE_ID = "R1"
 ADVISORY = False
 
-#: Formats where an enzyme in the wet phase sits in liquid for shelf duration.
-_WET_CONTACT_FORMATS = {Format.PREMIXED_WET, Format.ENCAPSULATED_IN_WET}
-
 
 def evaluate(ctx: EvalContext) -> list[RuleFinding]:
-    if ctx.formulation.format not in _WET_CONTACT_FORMATS:
+    # Formats where an enzyme in the wet phase sits in liquid for shelf
+    # duration — same set Task 2 extracted for phase_for_format, routed
+    # through here rather than a second, value-identical local copy.
+    if ctx.formulation.format not in WET_FORMATS:
         return []
 
     findings: list[RuleFinding] = []

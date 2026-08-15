@@ -147,6 +147,11 @@ def set_confirmed(
     conn: sqlite3.Connection, table: str, record_id: str, field: str, raw: Any, source: str
 ) -> None:
     """The only path to `confirmed` — an approved proposal with a citation (§2.3, §5.4)."""
+    # Explicit rather than relying on TRACKED_FIELDS.get(table, {}) to fall
+    # through empty for a bad table — that happened to reject too, but only
+    # as a side effect, and would stop doing so silently if TRACKED_FIELDS
+    # ever gained a key for something that isn't an editable table.
+    check_table(table)
     if field not in TRACKED_FIELDS.get(table, {}):
         raise ValidationRejection(f"'{field}' does not carry a source, so it cannot be confirmed.")
     if not source.strip():

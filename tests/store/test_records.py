@@ -126,3 +126,9 @@ def test_a_plain_field_cannot_be_confirmed(conn):
     """Only a tracked field has a paired source column to record the citation in."""
     with pytest.raises(ValidationRejection):
         records.set_confirmed(conn, "enzyme", "lactase_fungal_acid", "notes", "x", "a source")
+
+
+def test_set_confirmed_refuses_an_unknown_table_explicitly(conn):
+    """check_table's own message, not an incidental empty-dict fallthrough."""
+    with pytest.raises(ValidationRejection, match="not an editable table"):
+        records.set_confirmed(conn, "substrate", "milk_sugars", "ph", "1.0", "a source")
