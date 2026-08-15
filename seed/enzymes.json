@@ -83,7 +83,7 @@
       "is_natural_source": false,
       "is_gras": {"value": true, "status": "confirmed", "source": "KB §4l — alpha-galactosidase largely already GRAS"},
       "degrades_structural": [],
-      "notes": "Acts on soluble sugars, not structure — carries no structural entry, which is why a narrow FODMAP blend is texture-safe (spec §6.2 R15)."
+      "notes": "Acts on soluble sugars, not structure — carries no structural entry, which is why a narrow FODMAP blend does not degrade texture (spec §6.2 R15)."
     },
     {
       "id": "inulinase",
@@ -281,7 +281,7 @@
       "is_natural_source": false,
       "is_gras": {"value": null, "status": "unconfirmed", "source": ""},
       "degrades_structural": [{"structural_class": "pectin_cellulose", "tier": "gradual"}],
-      "notes": "Breaks plant cell walls — the chemistry of a vegetable going limp. The reason a broad-spectrum blend is not texture-safe on a dressed salad."
+      "notes": "Breaks plant cell walls — the chemistry of a vegetable going limp. The reason a broad-spectrum blend degrades texture on a dressed salad."
     },
     {
       "id": "pectinase",

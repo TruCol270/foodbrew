@@ -5,20 +5,17 @@ and the rule cannot be skipped by not running the web toolchain.
 """
 
 import pathlib
-import re
 
 import pytest
 
-PROHIBITED = ("safe", "validated", "guaranteed", "clinically proven", "proven", "demonstrated")
+from foodbrew.engine.language import PROHIBITED_WORDS as PROHIBITED
+from foodbrew.engine.language import contains_prohibited
+
 WEB_SRC = pathlib.Path(__file__).resolve().parent.parent / "web" / "src"
 
 
 def _source_files():
     return sorted(p for p in WEB_SRC.rglob("*.tsx")) + sorted(WEB_SRC.rglob("*.ts"))
-
-
-def _contains(text: str, word: str) -> bool:
-    return re.search(rf"\b{re.escape(word)}\b", text) is not None
 
 
 @pytest.mark.skipif(not WEB_SRC.is_dir(), reason="frontend not present in this checkout")
@@ -27,7 +24,7 @@ def test_no_prohibited_word_appears_in_frontend_source(word):
     offenders = [
         path.relative_to(WEB_SRC)
         for path in _source_files()
-        if _contains(path.read_text(encoding="utf-8").lower(), word)
+        if word in contains_prohibited(path.read_text(encoding="utf-8"))
     ]
     assert not offenders, f"'{word}' appears in: {', '.join(map(str, offenders))}"
 
