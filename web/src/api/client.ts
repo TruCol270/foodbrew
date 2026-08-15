@@ -1,6 +1,6 @@
 import type {
-  Enzyme, Evaluation, EvaluationSummary, Food, Formulation, Recipe,
-  SelectedEnzyme, Substrate, SubstrateRow,
+  AuditEvent, Comparison, Enzyme, Evaluation, EvaluationSummary, Food, Formulation,
+  Proposal, Recipe, SelectedEnzyme, Substrate, SubstrateRow,
 } from './types'
 
 /** The API's error shape. A rejected formulation is normal traffic, not a crash. */
@@ -32,6 +32,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = <T,>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 
+const put = <T,>(path: string, body: unknown) =>
+  request<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+
 export const api = {
   enzymes: () => request<Enzyme[]>('/enzymes'),
   substrates: () => request<Substrate[]>('/substrates'),
@@ -58,4 +61,30 @@ export const api = {
     post<Evaluation>(`/formulations/${formulationId}/evaluate`),
   evaluation: (id: string) => request<Evaluation>(`/evaluations/${id}`),
   recentEvaluations: () => request<EvaluationSummary[]>('/evaluations'),
+
+  applyVariant: (evaluationId: string, suggestionId: number) =>
+    post<Evaluation>(`/evaluations/${evaluationId}/apply-variant`, { suggestion_id: suggestionId }),
+
+  compare: (ids: string[]) => {
+    const params = new URLSearchParams()
+    ids.forEach((id) => params.append('ids', id))
+    return request<Comparison>(`/compare?${params}`)
+  },
+
+  updateEnzyme: (id: string, fields: Record<string, unknown>) =>
+    put<Enzyme>(`/enzymes/${id}`, { fields }),
+  resetEnzyme: (id: string) => post<Enzyme>(`/enzymes/${id}/reset`),
+  updateFood: (id: string, fields: Record<string, unknown>) =>
+    put<Food>(`/foods/${id}`, { fields }),
+  resetFood: (id: string) => post<Food>(`/foods/${id}/reset`),
+
+  proposals: (status?: Proposal['status']) =>
+    request<Proposal[]>(`/proposals${status ? `?status=${status}` : ''}`),
+  createProposal: (body: unknown) => post<Proposal>('/proposals', body),
+  approveProposal: (id: string) => post<Proposal>(`/proposals/${id}/approve`),
+  rejectProposal: (id: string) => post<Proposal>(`/proposals/${id}/reject`),
+
+  auditFeed: () => request<AuditEvent[]>('/audit'),
+
+  reportUrl: (evaluationId: string) => `/api/v1/export/${evaluationId}.md`,
 }
