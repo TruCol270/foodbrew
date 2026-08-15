@@ -130,6 +130,15 @@ def test_removing_a_trigger_food_leaves_the_rest(make_ctx):
     ({"ops": [{"op": "remove_enzyme", "enzyme_id": "amylase"}]}, "not selected"),
     ({"ops": [{"op": "set_enzyme_dose", "enzyme_id": "lactase_fungal_acid", "value": -1}]},
      "cannot be negative"),
+    ({"ops": [{"op": "set_enzyme_dose", "enzyme_id": "lactase_fungal_acid", "value": "abc"}]},
+     "not a valid dose"),
+    ({"ops": [{"op": "add_enzyme", "enzyme_id": "amylase", "dose": -1}]},
+     "cannot be negative"),
+    ({"ops": [{"op": "swap_enzyme", "enzyme_id": "lactase_fungal_acid",
+               "replacement_id": "amylase", "dose": -1}]},
+     "cannot be negative"),
+    ({"ops": [{"op": "set_enzyme_addition_index", "value": "not-a-number"}]},
+     "not a valid addition point"),
 ])
 def test_malformed_patches_are_refused_in_plain_english(make_ctx, patch, fragment):
     form = make_ctx().formulation

@@ -119,7 +119,11 @@ def _op_set_enzyme_addition_index(formulation: Formulation, raw: Mapping) -> For
     value = raw.get("value")
     if value is None:
         raise ValidationRejection("An enzyme addition point is required.")
-    return dataclasses.replace(formulation, enzyme_addition_index=int(value))
+    try:
+        index = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationRejection(f"'{value}' is not a valid addition point.") from exc
+    return dataclasses.replace(formulation, enzyme_addition_index=index)
 
 
 def _op_set_enzyme_phase(formulation: Formulation, raw: Mapping) -> Formulation:
@@ -136,23 +140,34 @@ def _op_set_enzyme_encapsulated(formulation: Formulation, raw: Mapping) -> Formu
     return _replace_selection(formulation, index, encapsulated=bool(raw["value"]))
 
 
+def _parse_dose(value: Any) -> float | None:
+    """Coerce and validate a dose the same way at every op that accepts one —
+    `set_enzyme_dose`, `add_enzyme`, and `swap_enzyme` all route through this
+    rather than each repeating (and, as `add_enzyme`/`swap_enzyme` once did,
+    silently skipping) the negative-dose check."""
+    if value is None:
+        return None
+    try:
+        dose = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationRejection(f"'{value}' is not a valid dose.") from exc
+    if dose < 0:
+        raise ValidationRejection("A dose cannot be negative.")
+    return dose
+
+
 def _op_set_enzyme_dose(formulation: Formulation, raw: Mapping) -> Formulation:
     index = _selection_index(formulation, raw["enzyme_id"])
-    value = raw.get("value")
-    dose = None if value is None else float(value)
-    if dose is not None and dose < 0:
-        raise ValidationRejection("A dose cannot be negative.")
-    return _replace_selection(formulation, index, dose=dose)
+    return _replace_selection(formulation, index, dose=_parse_dose(raw.get("value")))
 
 
 def _op_add_enzyme(formulation: Formulation, raw: Mapping) -> Formulation:
     enzyme_id = raw["enzyme_id"]
     if any(s.enzyme_id == enzyme_id for s in formulation.enzymes):
         return formulation
-    dose = raw.get("dose")
     addition = SelectedEnzyme(
         enzyme_id=enzyme_id,
-        dose=None if dose is None else float(dose),
+        dose=_parse_dose(raw.get("dose")),
         phase=phase_for_format(formulation.format),
         encapsulated=_ENCAPSULATION_FOR_FORMAT.get(formulation.format, False),
         source_choice=raw.get("source_choice", ""),
@@ -173,12 +188,11 @@ def _op_swap_enzyme(formulation: Formulation, raw: Mapping) -> Formulation:
     replacement = raw["replacement_id"]
     if any(s.enzyme_id == replacement for s in formulation.enzymes):
         return _op_remove_enzyme(formulation, {"enzyme_id": raw["enzyme_id"]})
-    dose = raw.get("dose")
     return _replace_selection(
         formulation,
         index,
         enzyme_id=replacement,
-        dose=None if dose is None else float(dose),
+        dose=_parse_dose(raw.get("dose")),
         source_choice=raw.get("source_choice", ""),
     )
 

@@ -52,7 +52,34 @@ def test_a_formulation_that_already_clears_is_told_so(make_ctx):
     )
     recommendation = recommend_format(ctx)
     assert recommendation.recommended is not None
-    assert "least separated format" in recommendation.message
+    # Dry sachet (current) has no reds itself here, and neither does premixed
+    # wet (the ladder's earliest rung, since no measured pH means R1 can only
+    # CANNOT_ASSESS, never RED) — so `recommended` lands on premixed wet, not
+    # on `current`. Both messages are legitimate; assert on the one this
+    # scenario actually produces rather than a phrase common to both.
+    assert recommendation.recommended != recommendation.current
+    assert "already clears these rules" in recommendation.message
+    assert "the blockers are" not in recommendation.message
+
+
+def test_a_formulation_that_clears_but_is_not_the_earliest_rung_names_no_blockers(make_ctx):
+    """Regression: `current` clearing but losing to an earlier-clearing rung
+    used to render 'As {current} the blockers are .' — a dangling, false
+    claim of blockers where there were none."""
+    ctx = make_ctx(
+        fmt=Format.DRY_SACHET,
+        enzymes=(("lactase_fungal_acid", 9000.0, Phase.DRY),),
+        trigger_foods=("milk",),
+        process_steps=(),
+    )
+    recommendation = recommend_format(ctx)
+    current_option = next(o for o in recommendation.options if o.is_current)
+    assert current_option.clears
+    assert recommendation.recommended != recommendation.current
+    assert recommendation.message == (
+        "Dry sachet already clears these rules, but premixed wet is less "
+        "separated and clears them too."
+    )
 
 
 def test_an_uncovered_substrate_is_reported_as_unfixable_by_format(make_ctx):

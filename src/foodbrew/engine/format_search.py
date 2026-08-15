@@ -112,12 +112,24 @@ def recommend_format(ctx: EvalContext) -> FormatRecommendation:
             f"clears these rules."
         )
     else:
-        message = (
-            f"{FORMAT_TITLES[recommended]} is the least separated format that clears "
-            f"these rules. As {FORMAT_TITLES[current].lower()} the blockers are "
-            + ", ".join(next(o.reds for o in options if o.is_current))
-            + "."
-        )
+        current_reds = next(o.reds for o in options if o.is_current)
+        if current_reds:
+            message = (
+                f"{FORMAT_TITLES[recommended]} is the least separated format that clears "
+                f"these rules. As {FORMAT_TITLES[current].lower()} the blockers are "
+                + ", ".join(current_reds)
+                + "."
+            )
+        else:
+            # `current` itself clears every rule checked but isn't the ladder's
+            # earliest clearing rung — e.g. dry sachet clears and so does the
+            # less-separated dual chamber. There are no blockers to name; saying
+            # so falsely (a dangling "the blockers are .") would read as a bug
+            # in the tool, not a real finding.
+            message = (
+                f"{FORMAT_TITLES[current]} already clears these rules, but "
+                f"{FORMAT_TITLES[recommended].lower()} is less separated and clears them too."
+            )
 
     return FormatRecommendation(
         current=current,
