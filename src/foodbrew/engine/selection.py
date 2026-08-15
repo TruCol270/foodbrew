@@ -9,24 +9,34 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
+from foodbrew.engine.conventions import phase_for_format
 from foodbrew.engine.types import (
     Enzyme,
     Food,
     Format,
-    Phase,
     SelectedEnzyme,
     Substrate,
 )
-
-#: Formats where the enzyme sits in the liquid; everything else keeps it dry.
-_WET_FORMATS = frozenset({Format.PREMIXED_WET, Format.ENCAPSULATED_IN_WET})
 
 #: Proposal order within one substrate. Anything unlisted sorts last, then by id,
 #: so the proposal is stable rather than dictionary-ordered.
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
-def _proposed_dose(enzyme: Enzyme) -> float | None:
+def enzyme_for_substrate(substrate_id: str, enzymes: Mapping[str, Enzyme]) -> Enzyme | None:
+    """The catalogue's preferred enzyme for one substrate, or None if it has none.
+
+    Priority first, then id, so the choice is stable rather than dictionary-ordered.
+    `propose_enzymes` and M3's R14 auto-variant both go through here.
+    """
+    candidates = [e for e in enzymes.values() if e.substrate_id == substrate_id]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda e: (_PRIORITY_ORDER.get(e.priority, 99), e.id))
+    return candidates[0]
+
+
+def proposed_dose(enzyme: Enzyme) -> float | None:
     """The evidence threshold if there is one, else the benchmark floor, else nothing.
 
     A dose is never invented: with neither field usable the selection carries
@@ -62,17 +72,18 @@ def propose_enzymes(
                 continue
             wanted.add(substrate_id)
 
-    phase = Phase.WET if format in _WET_FORMATS else Phase.DRY
-    candidates = [e for e in enzymes.values() if e.substrate_id in wanted]
-    candidates.sort(key=lambda e: (_PRIORITY_ORDER.get(e.priority, 99), e.id))
-
-    chosen: dict[str, Enzyme] = {}
-    for enzyme in candidates:
-        chosen.setdefault(enzyme.substrate_id, enzyme)
+    phase = phase_for_format(format)
+    chosen = {
+        substrate_id: enzyme
+        for substrate_id, enzyme in (
+            (sid, enzyme_for_substrate(sid, enzymes)) for sid in sorted(wanted)
+        )
+        if enzyme is not None
+    }
 
     return tuple(
         SelectedEnzyme(
-            enzyme_id=enzyme.id, dose=_proposed_dose(enzyme), phase=phase, encapsulated=False
+            enzyme_id=enzyme.id, dose=proposed_dose(enzyme), phase=phase, encapsulated=False
         )
         for _, enzyme in sorted(chosen.items())
     )

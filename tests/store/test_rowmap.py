@@ -47,3 +47,17 @@ def test_gi_regions_come_back_in_order(tmp_path):
     with connect(db) as conn:
         regions = load_catalog(conn).gi_regions
     assert [r.order for r in regions] == sorted(r.order for r in regions)
+
+
+def test_a_seed_record_round_trips_through_its_row(seed):
+    """The reader and the writer are inverses, which is what makes reset faithful."""
+    from foodbrew.store.rowmap import enzyme_from_row, enzyme_to_row, food_from_row, food_to_row
+
+    for record, to_row, from_row in (
+        (seed.enzymes["lactase_fungal_acid"], enzyme_to_row, enzyme_from_row),
+        (seed.foods["milk"], food_to_row, food_from_row),
+    ):
+        row = to_row(record)
+        # sqlite3.Row is not constructible directly; a plain dict has the same
+        # __getitem__ contract the mappers use.
+        assert from_row(row) == record

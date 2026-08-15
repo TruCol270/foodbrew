@@ -7,9 +7,7 @@ import pathlib
 import pytest
 
 from foodbrew.api import schemas
-
-#: Spec §10 — prohibited in engine output, report, and anything the founder reads.
-PROHIBITED = ("safe", "validated", "guaranteed", "clinically proven", "proven", "demonstrated")
+from foodbrew.engine.language import PROHIBITED_WORDS as PROHIBITED
 
 TRACKED_KEYS = {"value", "status", "source"}
 VALID_STATUSES = {"confirmed", "unconfirmed", "user_provided", "calculated", "observed"}

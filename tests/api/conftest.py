@@ -3,26 +3,13 @@ from fastapi.testclient import TestClient
 
 from foodbrew.api.app import create_app
 from foodbrew.api.settings import Settings
-from foodbrew.db import create_database
 from foodbrew.store import formulations, recipes
-from foodbrew.store.connection import connect
-
-
-@pytest.fixture
-def db_path(tmp_path):
-    return create_database(tmp_path / "foodbrew.db")
 
 
 @pytest.fixture
 def client(db_path, tmp_path):
     app = create_app(Settings(db_path=db_path, web_dist=tmp_path / "no-web-build"))
     with TestClient(app) as c:
-        yield c
-
-
-@pytest.fixture
-def conn(db_path):
-    with connect(db_path) as c:
         yield c
 
 

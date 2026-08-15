@@ -12,13 +12,16 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
-from foodbrew.engine import evaluate
+from foodbrew.engine import ValidationRejection, evaluate
 from foodbrew.engine.flags import HEADLINE_DISPLAY, group_findings
 from foodbrew.engine.types import DwellProfile, RuleFinding, Verdict
+from foodbrew.engine.variants import suggest
+from foodbrew.store import variants as variant_store
 from foodbrew.store.clock import now_iso
 from foodbrew.store.formulations import hydrate_context
 from foodbrew.store.ids import new_id
-from foodbrew.store.snapshot import snapshot_from_context
+from foodbrew.store.snapshot import SnapshotChange, diff_snapshots, snapshot_from_context
+from foodbrew.store.variants import StoredSuggestion
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +39,7 @@ class StoredEvaluation:
     data_gaps: tuple[RuleFinding, ...]
     cautions: tuple[RuleFinding, ...]
     advisories: tuple[RuleFinding, ...]
+    suggestions: tuple[StoredSuggestion, ...] = ()
 
 
 def run(conn: sqlite3.Connection, formulation_id: str) -> StoredEvaluation:
@@ -68,6 +72,7 @@ def run(conn: sqlite3.Connection, formulation_id: str) -> StoredEvaluation:
             for f in result.findings
         ],
     )
+    variant_store.write(conn, evaluation_id, suggest(ctx, result.findings), created_at)
     conn.commit()
 
     return _assemble(
@@ -75,6 +80,7 @@ def run(conn: sqlite3.Connection, formulation_id: str) -> StoredEvaluation:
         engine_version=result.engine_version, created_at=created_at,
         overall=result.overall, findings=result.findings,
         envelope=dict(result.envelope), snapshot=snapshot,
+        suggestions=variant_store.list_for_evaluation(conn, evaluation_id),
     )
 
 
@@ -104,6 +110,7 @@ def get(conn: sqlite3.Connection, evaluation_id: str) -> StoredEvaluation | None
             for k, v in json.loads(row["occasion_envelope_json"]).items()
         },
         snapshot=row["input_snapshot_json"],
+        suggestions=variant_store.list_for_evaluation(conn, evaluation_id),
     )
 
 
@@ -129,9 +136,31 @@ def list_recent(conn, limit: int = 10) -> tuple[StoredEvaluation, ...]:
     return tuple(get(conn, i) for i in ids)
 
 
+def freshness(
+    conn: sqlite3.Connection, stored: StoredEvaluation
+) -> tuple[bool, tuple[SnapshotChange, ...]]:
+    """Has anything this evaluation read changed since it ran?
+
+    Cheap because M2 made the snapshot byte-stable: freeze the formulation's
+    current context and compare two strings. Called from the evaluation detail
+    endpoint only — a list of summaries would otherwise mean one full catalogue
+    hydration per row (plan decision #9).
+    """
+    try:
+        ctx = hydrate_context(conn, stored.formulation_id)
+    except ValidationRejection:
+        # The formulation is gone. Nothing can be re-run, so nothing is fresh.
+        return True, ()
+
+    current = snapshot_from_context(ctx)
+    if current == stored.input_snapshot_json:
+        return False, ()
+    return True, diff_snapshots(stored.input_snapshot_json, current)
+
+
 def _assemble(
     *, evaluation_id, formulation_id, engine_version, created_at, overall, findings,
-    envelope, snapshot,
+    envelope, snapshot, suggestions=(),
 ) -> StoredEvaluation:
     groups = group_findings(findings)
     return StoredEvaluation(
@@ -140,4 +169,5 @@ def _assemble(
         findings=tuple(findings), envelope=envelope, input_snapshot_json=snapshot,
         blockers=groups.blockers, data_gaps=groups.data_gaps,
         cautions=groups.cautions, advisories=groups.advisories,
+        suggestions=tuple(suggestions),
     )

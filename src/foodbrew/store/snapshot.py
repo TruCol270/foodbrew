@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
 
 from foodbrew.engine.types import (
     Deadline,
@@ -276,3 +278,63 @@ def context_from_snapshot(raw: str) -> EvalContext:
         if payload["latest_trial_ph"]
         else None,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotChange:
+    """One field that moved between two snapshots of the same formulation."""
+
+    #: "enzyme" | "food" | "substrate" | "formulation" | "gi_regions" | "latest_trial_ph"
+    kind: str
+    record_id: str
+    field: str
+    before: Any
+    after: Any
+
+
+_RECORD_SECTIONS = (("enzymes", "enzyme"), ("foods", "food"), ("substrates", "substrate"))
+
+
+def _record_changes(kind: str, old: Mapping, new: Mapping) -> list[SnapshotChange]:
+    changes: list[SnapshotChange] = []
+    for record_id in sorted(set(old) | set(new)):
+        before, after = old.get(record_id), new.get(record_id)
+        if before is None:
+            changes.append(SnapshotChange(kind, record_id, "*", None, "added"))
+            continue
+        if after is None:
+            changes.append(SnapshotChange(kind, record_id, "*", "removed", None))
+            continue
+        for name in sorted(set(before) | set(after)):
+            if before.get(name) != after.get(name):
+                changes.append(
+                    SnapshotChange(kind, record_id, name, before.get(name), after.get(name))
+                )
+    return changes
+
+
+def diff_snapshots(old_json: str, new_json: str) -> tuple[SnapshotChange, ...]:
+    """Field-level diff, so a stale banner can name what moved (plan decision #9)."""
+    old, new = json.loads(old_json), json.loads(new_json)
+    changes: list[SnapshotChange] = []
+
+    for section, kind in _RECORD_SECTIONS:
+        changes += _record_changes(kind, old.get(section, {}), new.get(section, {}))
+
+    old_form, new_form = old.get("formulation", {}), new.get("formulation", {})
+    for name in sorted(set(old_form) | set(new_form)):
+        if old_form.get(name) != new_form.get(name):
+            changes.append(
+                SnapshotChange(
+                    "formulation", old_form.get("id", ""), name,
+                    old_form.get(name), new_form.get(name),
+                )
+            )
+
+    for section in ("gi_regions", "latest_trial_ph"):
+        if old.get(section) != new.get(section):
+            changes.append(
+                SnapshotChange(section, "", "*", old.get(section), new.get(section))
+            )
+
+    return tuple(changes)

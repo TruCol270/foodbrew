@@ -162,6 +162,67 @@ export interface DoseCard {
   above_benchmark_max: boolean | null
 }
 
+export interface Suggestion {
+  id: number
+  suggestion_type: string
+  description: string
+  raised_by: string[]
+  is_applicable: boolean
+}
+
+export interface FormatOption {
+  format: Format
+  title: string
+  is_current: boolean
+  clears: boolean
+  reds: string[]
+}
+
+export interface FormatRecommendation {
+  current: Format
+  recommended: Format | null
+  options: FormatOption[]
+  unfixable: string[]
+  message: string
+}
+
+export interface SnapshotChange {
+  kind: string
+  record_id: string
+  field: string
+  before: unknown
+  after: unknown
+}
+
+export interface ComparisonCell { text: string; verdict: Verdict | null; present: boolean }
+export interface ComparisonColumn { evaluation_id: string; label: string; headline: Headline }
+export interface ComparisonRow {
+  section: string
+  key: string
+  label: string
+  cells: ComparisonCell[]
+  changed: boolean
+}
+export interface Comparison { columns: ComparisonColumn[]; rows: ComparisonRow[] }
+
+export interface Proposal {
+  id: string
+  table_name: string
+  record_id: string
+  field: string
+  proposed_value: string | null
+  source_citation: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+export interface AuditEvent {
+  id: number
+  actor: string
+  action: string
+  entity: string
+  timestamp: string
+}
+
 export interface Evaluation {
   id: string
   formulation_id: string
@@ -177,6 +238,10 @@ export interface Evaluation {
   envelope: Record<DwellProfile, Verdict>
   gi_strip: GiLane[]
   dose_cards: DoseCard[]
+  suggestions: Suggestion[]
+  format_recommendation: FormatRecommendation
+  stale: boolean
+  changes: SnapshotChange[]
 }
 
 export interface EvaluationSummary {

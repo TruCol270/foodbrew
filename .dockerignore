@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+.pytest_cache
+.ruff_cache
+__pycache__
+*.egg-info
+data
+*.db
+web/node_modules
+web/dist
+web/test-results
+web/playwright-report
+web/.e2e
+.claude
+docs
+fwbackgroundmaterials

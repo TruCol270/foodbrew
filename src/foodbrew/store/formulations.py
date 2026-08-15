@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from foodbrew.engine import ValidationRejection
+from foodbrew.engine.patch import apply_patch
 from foodbrew.engine.types import (
     DwellProfile,
     EvalContext,
@@ -163,6 +165,47 @@ def latest_trial_ph(conn, formulation_id: str) -> Tracked | None:
     if row is None:
         return None
     return Tracked(float(row["ph"]), TruthLabel.OBSERVED, "trial batch measurement")
+
+
+def clone_with_patch(
+    conn: sqlite3.Connection, formulation_id: str, patch: Mapping[str, Any] | None
+) -> str:
+    """Spec §7 — applying a suggestion clones, patches, and re-runs.
+
+    Append-only, exactly like evaluate: the source formulation and every
+    evaluation of it are untouched, and the clone records its parent (plan
+    decision #15). `create` re-validates, so a patch that produced something
+    degenerate is refused here rather than reaching the engine.
+    """
+    source = get(conn, formulation_id)
+    if source is None:
+        raise ValidationRejection(f"Unknown formulation '{formulation_id}'.")
+    recipe_id = recipe_id_for(conn, formulation_id)
+    patched = apply_patch(source, patch)
+
+    return create(
+        conn,
+        recipe_id=recipe_id,
+        format=patched.format.value,
+        target_trigger_food_ids=list(patched.target_trigger_food_ids),
+        application_food_ids=list(patched.application_food_ids),
+        dwell_profile=patched.dwell_profile.value if patched.dwell_profile else None,
+        enzymes=[
+            {
+                "enzyme_id": s.enzyme_id, "dose": s.dose, "phase": s.phase.value,
+                "encapsulated": s.encapsulated, "source_choice": s.source_choice,
+            }
+            for s in patched.enzymes
+        ],
+        serving_size_g=patched.serving_size_g,
+        measured_ph=patched.measured_ph.value,
+        process_steps=[
+            {"order": s.order, "label": s.label, "is_heat": s.is_heat}
+            for s in patched.process_steps
+        ],
+        enzyme_addition_index=patched.enzyme_addition_index,
+        parent_formulation_id=formulation_id,
+    )
 
 
 def hydrate_context(conn: sqlite3.Connection, formulation_id: str) -> EvalContext:

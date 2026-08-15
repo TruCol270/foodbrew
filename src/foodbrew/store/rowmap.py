@@ -118,3 +118,66 @@ def food_from_row(row: sqlite3.Row) -> Food:
         notes=row["notes"],
         **{name: tracked(row, name) for name in FOOD_TRACKED},
     )
+
+
+def tracked_columns(prefix: str, value: Tracked) -> dict:
+    """The inverse of `tracked`. A boolean Tracked stores as SQLite INTEGER."""
+    raw = value.value
+    if isinstance(raw, bool):
+        raw = int(raw)
+    return {prefix: raw, f"{prefix}_status": value.status.value, f"{prefix}_source": value.source}
+
+
+def substrate_to_row(s: Substrate) -> dict:
+    return {
+        "id": s.id, "name": s.name,
+        "native_human_enzyme": int(s.native_human_enzyme),
+        "is_prebiotic": int(s.is_prebiotic),
+        "no_commercial_enzyme": int(s.no_commercial_enzyme),
+        "notes": s.notes,
+    }
+
+
+def gi_region_to_row(r: GIRegion) -> dict:
+    return {
+        "id": r.id, "name": r.name, "ph_low": r.ph_low, "ph_high": r.ph_high,
+        "order": r.order, "dormant": int(r.dormant), "transit_note": r.transit_note,
+    }
+
+
+def enzyme_to_row(e: Enzyme) -> dict:
+    row = {
+        "id": e.id, "name": e.name, "aliases_json": json.dumps(list(e.aliases)),
+        "substrate_id": e.substrate_id, "source_type": e.source_type,
+        "priority": e.priority, "deadline": e.deadline.value,
+        "site_of_action": e.site_of_action, "dose_unit": e.dose_unit,
+        "dose_benchmark_note": e.dose_benchmark_note,
+        "is_protease": int(e.is_protease), "is_natural_source": int(e.is_natural_source),
+        "food_grade_note": e.food_grade_note, "heat_labile_note": e.heat_labile_note,
+        "degrades_structural_json": json.dumps([
+            {"structural_class": x.structural_class.value, "tier": x.tier.value}
+            for x in e.degrades_structural
+        ]),
+        "cost_tier": e.cost_tier, "supplier_note": e.supplier_note, "notes": e.notes,
+    }
+    for prefix in ENZYME_TRACKED:
+        row.update(tracked_columns(prefix, getattr(e, prefix)))
+    return row
+
+
+def food_to_row(f: Food) -> dict:
+    row = {
+        "id": f.id, "name": f.name, "category": f.category,
+        "is_recipe_ingredient": int(f.is_recipe_ingredient),
+        "is_trigger_food": int(f.is_trigger_food),
+        "is_application_food": int(f.is_application_food),
+        "contains_substrate_ids_json": json.dumps(list(f.contains_substrate_ids)),
+        "typical_load_unit": f.typical_load_unit,
+        "contains_protease": int(f.contains_protease),
+        "is_heat_processed": int(f.is_heat_processed),
+        "structural_json": json.dumps([s.value for s in f.structural]),
+        "notes": f.notes,
+    }
+    for prefix in FOOD_TRACKED:
+        row.update(tracked_columns(prefix, getattr(f, prefix)))
+    return row

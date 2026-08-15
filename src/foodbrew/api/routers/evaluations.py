@@ -19,10 +19,15 @@ from foodbrew.api.schemas import (
     EvaluationOut,
     EvaluationSummaryOut,
     FindingOut,
+    FormatOptionOut,
+    FormatRecommendationOut,
     GiLaneOut,
     RegionStateOut,
+    SnapshotChangeOut,
+    SuggestionOut,
     TrackedOut,
 )
+from foodbrew.engine.format_search import recommend_format
 from foodbrew.engine.views import RULE_TITLES, dose_cards, gi_strip
 from foodbrew.store import evaluations as store
 from foodbrew.store.snapshot import context_from_snapshot
@@ -38,7 +43,23 @@ def _finding(f) -> FindingOut:
     )
 
 
-def _out(stored) -> EvaluationOut:
+def _recommendation(recommendation) -> FormatRecommendationOut:
+    return FormatRecommendationOut(
+        current=recommendation.current.value,
+        recommended=recommendation.recommended.value if recommendation.recommended else None,
+        options=[
+            FormatOptionOut(
+                format=option.format.value, title=option.title,
+                is_current=option.is_current, clears=option.clears, reds=list(option.reds),
+            )
+            for option in recommendation.options
+        ],
+        unfixable=list(recommendation.unfixable),
+        message=recommendation.message,
+    )
+
+
+def evaluation_out(stored, *, stale: bool = False, changes=()) -> EvaluationOut:
     ctx = context_from_snapshot(stored.input_snapshot_json)
     return EvaluationOut(
         id=stored.id, formulation_id=stored.formulation_id,
@@ -71,6 +92,22 @@ def _out(stored) -> EvaluationOut:
             )
             for c in dose_cards(ctx)
         ],
+        suggestions=[
+            SuggestionOut(
+                id=s.id, suggestion_type=s.suggestion_type, description=s.description,
+                raised_by=list(s.raised_by), is_applicable=s.is_applicable,
+            )
+            for s in stored.suggestions
+        ],
+        format_recommendation=_recommendation(recommend_format(ctx)),
+        stale=stale,
+        changes=[
+            SnapshotChangeOut(
+                kind=c.kind, record_id=c.record_id, field=c.field,
+                before=c.before, after=c.after,
+            )
+            for c in changes
+        ],
     )
 
 
@@ -86,7 +123,8 @@ def _summary(stored) -> EvaluationSummaryOut:
     "/formulations/{formulation_id}/evaluate", response_model=EvaluationOut, status_code=201
 )
 def run_evaluation(formulation_id: str, conn: sqlite3.Connection = Depends(get_conn)):
-    return _out(store.run(conn, formulation_id))
+    # A run just froze its own inputs, so it cannot be stale.
+    return evaluation_out(store.run(conn, formulation_id))
 
 
 @router.get("/formulations/{formulation_id}/evaluations", response_model=list[EvaluationSummaryOut])
@@ -104,7 +142,8 @@ def get_evaluation(evaluation_id: str, conn: sqlite3.Connection = Depends(get_co
     stored = store.get(conn, evaluation_id)
     if stored is None:
         raise HTTPException(status_code=404, detail=f"No evaluation '{evaluation_id}'.")
-    return _out(stored)
+    stale, changes = store.freshness(conn, stored)
+    return evaluation_out(stored, stale=stale, changes=changes)
 
 
 @router.get("/evaluations/{evaluation_id}/snapshot")

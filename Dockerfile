@@ -11,9 +11,10 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY src/ ./src/
 COPY seed/ ./seed/
-RUN pip install --no-cache-dir -e '.[dev]'
+# Editable, deliberately: seedload resolves `seed/` as parents[3] of its own
+# module path, so a site-packages install would not find the seed JSON.
+RUN pip install --no-cache-dir -e .
 
-COPY tests/ ./tests/
 COPY --from=web /web/dist ./web/dist
 
 ENV FOODBREW_DB_PATH=/data/foodbrew.db \

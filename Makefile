@@ -1,4 +1,4 @@
-.PHONY: test lint fmt db docker-db run web web-build e2e up
+.PHONY: test lint fmt db docker-db run web web-build e2e up report
 
 test:
 	.venv/bin/pytest -q
@@ -29,3 +29,7 @@ e2e:
 
 up:
 	docker compose up --build
+
+report:
+	@test -n "$(EVAL)" || (echo 'usage: make report EVAL=<evaluation id>' && exit 1)
+	curl -sf http://localhost:8000/api/v1/export/$(EVAL).md

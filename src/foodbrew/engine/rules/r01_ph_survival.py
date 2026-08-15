@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from foodbrew.engine.conventions import resolve_recipe_ph
+from foodbrew.engine.conventions import (
+    FALLBACK_MARGIN_PH,
+    WET_FORMATS,
+    resolve_recipe_ph,
+    shelf_stable_floor,
+)
 from foodbrew.engine.types import (
     EvalContext,
-    Format,
     Phase,
     RuleFinding,
     Verdict,
@@ -14,17 +18,12 @@ from foodbrew.engine.types import (
 RULE_ID = "R1"
 ADVISORY = False
 
-#: Spec §6.1 R1 — stated fallback when no supplier has confirmed a shelf-stable
-#: floor. An engineering convention that makes the rule testable, NOT a
-#: scientific claim; every finding using it says so (spec §12 item 3).
-FALLBACK_MARGIN_PH = 1.0
-
-#: Formats where an enzyme in the wet phase sits in liquid for shelf duration.
-_WET_CONTACT_FORMATS = {Format.PREMIXED_WET, Format.ENCAPSULATED_IN_WET}
-
 
 def evaluate(ctx: EvalContext) -> list[RuleFinding]:
-    if ctx.formulation.format not in _WET_CONTACT_FORMATS:
+    # Formats where an enzyme in the wet phase sits in liquid for shelf
+    # duration — same set Task 2 extracted for phase_for_format, routed
+    # through here rather than a second, value-identical local copy.
+    if ctx.formulation.format not in WET_FORMATS:
         return []
 
     findings: list[RuleFinding] = []
@@ -60,23 +59,22 @@ def evaluate(ctx: EvalContext) -> list[RuleFinding]:
             )
             continue
 
-        if enzyme.ph_shelf_stable_min.usable:
-            floor = float(enzyme.ph_shelf_stable_min.value)
-            floor_source = "ph_shelf_stable_min"
-            heuristic_note = ""
-        else:
-            floor = float(enzyme.ph_min.value) + FALLBACK_MARGIN_PH
-            floor_source = "fallback"
-            heuristic_note = (
-                " This uses the stated margin heuristic (ph_min + "
-                f"{FALLBACK_MARGIN_PH}) because no shelf-stable floor is confirmed — "
-                "supplier confirmation required."
-            )
+        floor_resolution = shelf_stable_floor(enzyme)
+        floor = floor_resolution.value
+        floor_source = floor_resolution.source
+        heuristic_note = (
+            " This uses the stated margin heuristic (ph_min + "
+            f"{FALLBACK_MARGIN_PH}) because no shelf-stable floor is confirmed — "
+            "supplier confirmation required."
+            if floor_resolution.is_heuristic
+            else ""
+        )
 
         evidence = {
             "recipe_ph": ph.value,
             "ph_origin": ph.origin,
             "ph_status": ph.status.value,
+            "driving_food_id": ph.driving_food_id,
             "floor": floor,
             "floor_source": floor_source,
             "ph_min": float(enzyme.ph_min.value),

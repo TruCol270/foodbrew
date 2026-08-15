@@ -294,6 +294,107 @@ class DoseCardOut(BaseModel):
     above_benchmark_max: bool | None
 
 
+class SuggestionOut(BaseModel):
+    """Spec §7. Applying one is `POST /evaluations/{id}/apply-variant` with its id."""
+
+    id: int
+    suggestion_type: str
+    description: str
+    raised_by: list[str]
+    #: False for a note — there is nothing to apply.
+    is_applicable: bool
+
+
+class ApplyVariantIn(BaseModel):
+    """A stored suggestion id. There is deliberately no patch field: the server
+    applies what it wrote, never what a client hands it (plan decision #2)."""
+
+    suggestion_id: int
+
+
+class FormatOptionOut(BaseModel):
+    format: str
+    title: str
+    is_current: bool
+    clears: bool
+    reds: list[str]
+
+
+class FormatRecommendationOut(BaseModel):
+    current: str
+    recommended: str | None
+    options: list[FormatOptionOut]
+    unfixable: list[str]
+    message: str
+
+
+class SnapshotChangeOut(BaseModel):
+    kind: str
+    record_id: str
+    field: str
+    before: Any = None
+    after: Any = None
+
+
+class ComparisonColumnOut(BaseModel):
+    evaluation_id: str
+    label: str
+    headline: str
+
+
+class ComparisonCellOut(BaseModel):
+    text: str
+    verdict: str | None
+    present: bool
+
+
+class ComparisonRowOut(BaseModel):
+    section: str
+    key: str
+    label: str
+    cells: list[ComparisonCellOut]
+    changed: bool
+
+
+class ComparisonOut(BaseModel):
+    columns: list[ComparisonColumnOut]
+    rows: list[ComparisonRowOut]
+
+
+class RecordEditIn(BaseModel):
+    """Workflow D. Field names are checked against `store/records.py`'s allowlist
+    on the server; a name that is not on it is refused, which is what stops a
+    client reaching a `_status` column through this door (plan decision #16)."""
+
+    fields: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProposalIn(BaseModel):
+    table_name: str
+    record_id: str
+    field: str
+    proposed_value: str
+    source_citation: str = Field(min_length=1)
+
+
+class ProposalOut(BaseModel):
+    id: str
+    table_name: str
+    record_id: str
+    field: str
+    proposed_value: str | None
+    source_citation: str
+    status: str
+
+
+class AuditEventOut(BaseModel):
+    id: int
+    actor: str
+    action: str
+    entity: str
+    timestamp: str
+
+
 class EvaluationOut(BaseModel):
     id: str
     formulation_id: str
@@ -309,6 +410,11 @@ class EvaluationOut(BaseModel):
     envelope: dict[str, str]
     gi_strip: list[GiLaneOut]
     dose_cards: list[DoseCardOut]
+    suggestions: list[SuggestionOut]
+    format_recommendation: FormatRecommendationOut
+    #: True when a record this evaluation read has changed since it ran.
+    stale: bool = False
+    changes: list[SnapshotChangeOut] = Field(default_factory=list)
 
 
 class EvaluationSummaryOut(BaseModel):
