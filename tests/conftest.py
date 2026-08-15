@@ -34,6 +34,21 @@ def seed():
 
 
 @pytest.fixture
+def db_path(tmp_path):
+    from foodbrew.db import create_database
+
+    return create_database(tmp_path / "foodbrew.db")
+
+
+@pytest.fixture
+def conn(db_path):
+    from foodbrew.store.connection import connect
+
+    with connect(db_path) as c:
+        yield c
+
+
+@pytest.fixture
 def with_load(seed):
     """Return a foods mapping where the named foods carry a confirmed load."""
 
