@@ -80,3 +80,36 @@ def test_a_direct_edit_still_cannot_produce_confirmed(conn):
     records.update(conn, "enzyme", "lactase_fungal_acid", {"ph_shelf_stable_min": 3.0})
     field = load_catalog(conn).enzymes["lactase_fungal_acid"].ph_shelf_stable_min
     assert field.status.value == "user_provided"
+
+
+def test_two_connections_racing_to_decide_the_same_proposal_only_one_wins(db_path):
+    """Regression: api/deps opens one connection per HTTP request, so two
+    requests deciding the same proposal is a real scenario, not a contrived
+    one — a read-then-write decision (what approve/reject used to be) lets
+    the second writer blindly overwrite the first's decision. Two genuinely
+    separate sqlite3 connections, standing in for two concurrent requests."""
+    import sqlite3
+
+    conn_a = sqlite3.connect(db_path, check_same_thread=False)
+    conn_a.row_factory = sqlite3.Row
+    conn_b = sqlite3.connect(db_path, check_same_thread=False)
+    conn_b.row_factory = sqlite3.Row
+    try:
+        proposal_id = _propose(conn_a)
+
+        # Both connections read the row as pending before either decides.
+        seen_a = proposals.get(conn_a, proposal_id)
+        seen_b = proposals.get(conn_b, proposal_id)
+        assert seen_a.status == seen_b.status == "pending"
+
+        proposals.approve(conn_a, proposal_id)
+        with pytest.raises(ValidationRejection, match="already approved"):
+            proposals.reject(conn_b, proposal_id)
+
+        # The approval — not a blind overwrite by the later reject — stands.
+        assert proposals.get(conn_a, proposal_id).status == "approved"
+        field = load_catalog(conn_a).enzymes["lactase_fungal_acid"].ph_shelf_stable_min
+        assert field.status.value == "confirmed"
+    finally:
+        conn_a.close()
+        conn_b.close()

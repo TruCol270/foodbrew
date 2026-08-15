@@ -94,17 +94,39 @@ def list_all(conn: sqlite3.Connection, status: str | None = None) -> tuple[Propo
     return tuple(_of(row) for row in rows)
 
 
-def _require_pending(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
+def _claim(conn: sqlite3.Connection, proposal_id: str, new_status: str) -> None:
+    """Atomically transition a *pending* proposal to `new_status`, or raise.
+
+    api/deps.get_conn opens a fresh connection per HTTP request, and two
+    requests deciding the same proposal at once each get their own — a plain
+    "read status, then decide, then write" (what this used to be) leaves a
+    window where both read PENDING before either writes, so the second
+    request's write blindly overwrites the first's decision instead of
+    discovering it lost the race. Folding the check into the UPDATE's WHERE
+    clause and inspecting rowcount closes that window: whichever request's
+    write lands second sees rowcount 0 and raises, because by then the row is
+    no longer PENDING.
+    """
+    cursor = conn.execute(
+        "UPDATE proposal SET status = ? WHERE id = ? AND status = ?",
+        (new_status, proposal_id, PENDING),
+    )
+    if cursor.rowcount == 1:
+        return
     proposal = get(conn, proposal_id)
     if proposal is None:
         raise ValidationRejection(f"No proposal '{proposal_id}'.")
-    if proposal.status != PENDING:
-        raise ValidationRejection(f"This proposal was already {proposal.status}.")
-    return proposal
+    raise ValidationRejection(f"This proposal was already {proposal.status}.")
 
 
 def approve(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
-    proposal = _require_pending(conn, proposal_id)
+    proposal = get(conn, proposal_id)
+    if proposal is None:
+        raise ValidationRejection(f"No proposal '{proposal_id}'.")
+    # table_name/record_id/field/proposed_value/source_citation never change
+    # after creation — only status does — so this read stays valid regardless
+    # of who wins the race in _claim() below.
+    _claim(conn, proposal_id, APPROVED)
     records.set_confirmed(
         conn,
         proposal.table_name,
@@ -113,7 +135,6 @@ def approve(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
         proposal.proposed_value,
         proposal.source_citation,
     )
-    conn.execute("UPDATE proposal SET status = ? WHERE id = ?", (APPROVED, proposal_id))
     audit.record(
         conn, action="approve_proposal", entity=f"proposal:{proposal_id}",
         before={"status": PENDING}, after={"status": APPROVED},
@@ -123,8 +144,9 @@ def approve(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
 
 
 def reject(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
-    _require_pending(conn, proposal_id)  # raises if unknown or already decided
-    conn.execute("UPDATE proposal SET status = ? WHERE id = ?", (REJECTED, proposal_id))
+    if get(conn, proposal_id) is None:
+        raise ValidationRejection(f"No proposal '{proposal_id}'.")
+    _claim(conn, proposal_id, REJECTED)
     audit.record(
         conn, action="reject_proposal", entity=f"proposal:{proposal_id}",
         before={"status": PENDING}, after={"status": REJECTED},
