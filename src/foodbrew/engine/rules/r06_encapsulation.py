@@ -6,8 +6,7 @@ rescue an enzyme from a condition that denatures it on contact.
 
 from __future__ import annotations
 
-from foodbrew.engine.conventions import resolve_recipe_ph
-from foodbrew.engine.rules.r01_ph_survival import FALLBACK_MARGIN_PH
+from foodbrew.engine.conventions import resolve_recipe_ph, shelf_stable_floor
 from foodbrew.engine.types import EvalContext, Format, Phase, RuleFinding, Verdict
 
 RULE_ID = "R6"
@@ -15,11 +14,8 @@ ADVISORY = False
 
 
 def _floor(enzyme) -> tuple[float | None, str]:
-    if enzyme.ph_shelf_stable_min.usable:
-        return float(enzyme.ph_shelf_stable_min.value), "ph_shelf_stable_min"
-    if enzyme.ph_min.usable:
-        return float(enzyme.ph_min.value) + FALLBACK_MARGIN_PH, "fallback"
-    return None, "unavailable"
+    resolution = shelf_stable_floor(enzyme)
+    return resolution.value, resolution.source
 
 
 def evaluate(ctx: EvalContext) -> list[RuleFinding]:

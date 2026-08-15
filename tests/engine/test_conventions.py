@@ -1,15 +1,22 @@
+import dataclasses
+
 import pytest
 
 from foodbrew.engine.conventions import (
+    FALLBACK_MARGIN_PH,
     WET_THRESHOLD_PCT,
+    FloorResolution,
     aggregate_substrate_loads,
     is_wet,
+    phase_for_format,
     resolve_recipe_ph,
+    shelf_stable_floor,
 )
 from foodbrew.engine.types import (
     Food,
     Format,
     Formulation,
+    Phase,
     RecipeIngredient,
     Tracked,
     TruthLabel,
@@ -129,3 +136,61 @@ def test_substrate_load_unconfirmed_when_any_contributor_unconfirmed():
     result = aggregate_substrate_loads(("beans", "lentils"), foods)
     assert result["gos"].status is TruthLabel.UNCONFIRMED
     assert "lentils" in result["gos"].source
+
+
+def test_wet_formats_put_the_enzyme_in_the_liquid():
+    assert phase_for_format(Format.PREMIXED_WET) is Phase.WET
+    assert phase_for_format(Format.ENCAPSULATED_IN_WET) is Phase.WET
+    assert phase_for_format(Format.DUAL_CHAMBER) is Phase.DRY
+    assert phase_for_format(Format.DRY_SACHET) is Phase.DRY
+
+
+def test_a_confirmed_shelf_floor_wins_over_the_heuristic(seed):
+    enzyme = dataclasses.replace(
+        seed.enzymes["lactase_fungal_acid"],
+        ph_shelf_stable_min=Tracked(3.2, TruthLabel.CONFIRMED, "supplier spec"),
+    )
+    resolution = shelf_stable_floor(enzyme)
+    assert (resolution.value, resolution.source) == (3.2, "ph_shelf_stable_min")
+    assert not resolution.is_heuristic
+
+
+def test_the_shipped_seed_falls_back_to_the_stated_margin(seed):
+    """Every seeded ph_shelf_stable_min is unconfirmed (spec §9.1)."""
+    enzyme = seed.enzymes["lactase_fungal_acid"]
+    resolution = shelf_stable_floor(enzyme)
+    assert resolution.is_heuristic
+    assert resolution.value == float(enzyme.ph_min.value) + FALLBACK_MARGIN_PH
+
+
+def test_an_enzyme_with_no_ph_at_all_has_no_floor(seed):
+    enzyme = dataclasses.replace(
+        seed.enzymes["lactase_fungal_acid"],
+        ph_min=Tracked(None, TruthLabel.UNCONFIRMED),
+        ph_shelf_stable_min=Tracked(None, TruthLabel.UNCONFIRMED),
+    )
+    assert shelf_stable_floor(enzyme) == FloorResolution(None, "unavailable")
+
+
+def test_the_fallback_names_the_ingredient_that_set_the_pH(make_ctx, seed):
+    foods = dict(seed.foods)
+    for food_id, ph, water in (("olive_oil", 6.0, 0.0), ("white_vinegar", 2.6, 95.0),
+                               ("water", 7.0, 100.0)):
+        foods[food_id] = dataclasses.replace(
+            foods[food_id],
+            ph=Tracked(ph, TruthLabel.USER_PROVIDED, "fixture"),
+            water_content_pct=Tracked(water, TruthLabel.USER_PROVIDED, "fixture"),
+        )
+    ctx = make_ctx(
+        recipe=(("olive_oil", 100.0), ("white_vinegar", 50.0), ("water", 20.0)), foods=foods
+    )
+    resolution = resolve_recipe_ph(ctx.formulation, foods, None)
+    assert resolution.value == 2.6
+    assert resolution.driving_food_id == "white_vinegar"
+
+
+def test_a_measured_pH_has_no_driving_ingredient(make_ctx):
+    ctx = make_ctx(measured_ph=4.4)
+    resolution = resolve_recipe_ph(ctx.formulation, ctx.foods, None)
+    assert resolution.origin == "formulation.measured_ph"
+    assert resolution.driving_food_id == ""

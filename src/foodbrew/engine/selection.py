@@ -9,17 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
+from foodbrew.engine.conventions import phase_for_format
 from foodbrew.engine.types import (
     Enzyme,
     Food,
     Format,
-    Phase,
     SelectedEnzyme,
     Substrate,
 )
-
-#: Formats where the enzyme sits in the liquid; everything else keeps it dry.
-_WET_FORMATS = frozenset({Format.PREMIXED_WET, Format.ENCAPSULATED_IN_WET})
 
 #: Proposal order within one substrate. Anything unlisted sorts last, then by id,
 #: so the proposal is stable rather than dictionary-ordered.
@@ -62,7 +59,7 @@ def propose_enzymes(
                 continue
             wanted.add(substrate_id)
 
-    phase = Phase.WET if format in _WET_FORMATS else Phase.DRY
+    phase = phase_for_format(format)
     candidates = [e for e in enzymes.values() if e.substrate_id in wanted]
     candidates.sort(key=lambda e: (_PRIORITY_ORDER.get(e.priority, 99), e.id))
 
