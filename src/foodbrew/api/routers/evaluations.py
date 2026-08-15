@@ -22,14 +22,18 @@ from foodbrew.api.schemas import (
     FormatOptionOut,
     FormatRecommendationOut,
     GiLaneOut,
+    ObservedEnvelopeOut,
+    ObservedProfileOut,
     RegionStateOut,
     SnapshotChangeOut,
     SuggestionOut,
     TrackedOut,
 )
 from foodbrew.engine.format_search import recommend_format
+from foodbrew.engine.observations import TEXTURE_SCALE_NOTE, observed_envelope
 from foodbrew.engine.views import RULE_TITLES, dose_cards, gi_strip
 from foodbrew.store import evaluations as store
+from foodbrew.store import trials as trials_store
 from foodbrew.store.snapshot import context_from_snapshot
 
 router = APIRouter(tags=["evaluations"])
@@ -59,7 +63,41 @@ def _recommendation(recommendation) -> FormatRecommendationOut:
     )
 
 
-def evaluation_out(stored, *, stale: bool = False, changes=()) -> EvaluationOut:
+def _observed(conn, evaluation_id: str) -> tuple[ObservedEnvelopeOut | None, list[str]]:
+    """Spec §6.3 — the Observed column, from the trials that test this evaluation.
+
+    Read-only and additive: the stored envelope, the findings, and the headline
+    are untouched (plan decision #10). The newest trial with any observation
+    wins; earlier ones stay readable on their own screens.
+    """
+    stored_trials = trials_store.list_for_evaluation(conn, evaluation_id)
+    if not stored_trials:
+        return None, []
+
+    with_records = [t for t in stored_trials if t.observations]
+    source = with_records[0] if with_records else stored_trials[0]
+    envelope = observed_envelope(source.observations)
+    return (
+        ObservedEnvelopeOut(
+            trial_id=source.id,
+            profiles={
+                str(profile): ObservedProfileOut(
+                    verdict=str(cell.verdict) if cell.verdict is not None else None,
+                    confidence_tier=str(cell.tier) if cell.tier is not None else None,
+                    observation_count=cell.observation_count,
+                    driving_observation_id=cell.driving_observation_id,
+                )
+                for profile, cell in envelope.items()
+            },
+            scale_note=TEXTURE_SCALE_NOTE,
+        ),
+        [t.id for t in stored_trials],
+    )
+
+
+def evaluation_out(
+    stored, *, stale: bool = False, changes=(), observed=None, trial_ids=()
+) -> EvaluationOut:
     ctx = context_from_snapshot(stored.input_snapshot_json)
     return EvaluationOut(
         id=stored.id, formulation_id=stored.formulation_id,
@@ -108,6 +146,8 @@ def evaluation_out(stored, *, stale: bool = False, changes=()) -> EvaluationOut:
             )
             for c in changes
         ],
+        observed=observed,
+        trial_ids=list(trial_ids),
     )
 
 
@@ -143,7 +183,10 @@ def get_evaluation(evaluation_id: str, conn: sqlite3.Connection = Depends(get_co
     if stored is None:
         raise HTTPException(status_code=404, detail=f"No evaluation '{evaluation_id}'.")
     stale, changes = store.freshness(conn, stored)
-    return evaluation_out(stored, stale=stale, changes=changes)
+    observed, trial_ids = _observed(conn, evaluation_id)
+    return evaluation_out(
+        stored, stale=stale, changes=changes, observed=observed, trial_ids=trial_ids
+    )
 
 
 @router.get("/evaluations/{evaluation_id}/snapshot")
