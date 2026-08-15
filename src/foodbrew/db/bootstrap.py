@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 
 from foodbrew.seedload.loader import Seed, load_seed
+from foodbrew.store.rowmap import (
+    enzyme_to_row,
+    food_to_row,
+    gi_region_to_row,
+    substrate_to_row,
+)
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
@@ -15,17 +20,6 @@ EXPECTED_TABLES = frozenset({
     "formulation", "evaluation", "rule_finding", "variant_suggestion", "trial",
     "trial_batch", "trial_observation", "trial_symptom_entry", "proposal", "audit_event",
 })
-
-
-def _tracked_cols(prefix: str, tracked) -> dict:
-    value = tracked.value
-    if isinstance(value, bool):
-        value = int(value)
-    return {
-        prefix: value,
-        f"{prefix}_status": tracked.status.value,
-        f"{prefix}_source": tracked.source,
-    }
 
 
 def _insert(conn: sqlite3.Connection, table: str, row: dict) -> None:
@@ -39,61 +33,13 @@ def _insert(conn: sqlite3.Connection, table: str, row: dict) -> None:
 
 def load_reference_data(conn: sqlite3.Connection, seed: Seed) -> None:
     for s in seed.substrates.values():
-        _insert(conn, "substrate", {
-            "id": s.id, "name": s.name,
-            "native_human_enzyme": int(s.native_human_enzyme),
-            "is_prebiotic": int(s.is_prebiotic),
-            "no_commercial_enzyme": int(s.no_commercial_enzyme),
-            "notes": s.notes,
-        })
-
+        _insert(conn, "substrate", substrate_to_row(s))
     for r in seed.gi_regions:
-        _insert(conn, "gi_region", {
-            "id": r.id, "name": r.name, "ph_low": r.ph_low, "ph_high": r.ph_high,
-            "order": r.order, "dormant": int(r.dormant), "transit_note": r.transit_note,
-        })
-
+        _insert(conn, "gi_region", gi_region_to_row(r))
     for e in seed.enzymes.values():
-        row = {
-            "id": e.id, "name": e.name, "aliases_json": json.dumps(list(e.aliases)),
-            "substrate_id": e.substrate_id, "source_type": e.source_type,
-            "priority": e.priority, "deadline": e.deadline.value,
-            "site_of_action": e.site_of_action, "dose_unit": e.dose_unit,
-            "dose_benchmark_note": e.dose_benchmark_note,
-            "is_protease": int(e.is_protease),
-            "is_natural_source": int(e.is_natural_source),
-            "food_grade_note": e.food_grade_note,
-            "heat_labile_note": e.heat_labile_note,
-            "degrades_structural_json": json.dumps([
-                {"structural_class": x.structural_class.value, "tier": x.tier.value}
-                for x in e.degrades_structural
-            ]),
-            "cost_tier": e.cost_tier, "supplier_note": e.supplier_note, "notes": e.notes,
-        }
-        for prefix in (
-            "ph_min", "ph_max", "ph_opt_low", "ph_opt_high", "ph_shelf_stable_min",
-            "temp_min_c", "temp_max_c", "temp_opt_c",
-            "dose_min", "dose_max", "dose_evidence_threshold", "is_gras",
-        ):
-            row.update(_tracked_cols(prefix, getattr(e, prefix)))
-        _insert(conn, "enzyme", row)
-
+        _insert(conn, "enzyme", enzyme_to_row(e))
     for f in seed.foods.values():
-        row = {
-            "id": f.id, "name": f.name, "category": f.category,
-            "is_recipe_ingredient": int(f.is_recipe_ingredient),
-            "is_trigger_food": int(f.is_trigger_food),
-            "is_application_food": int(f.is_application_food),
-            "contains_substrate_ids_json": json.dumps(list(f.contains_substrate_ids)),
-            "typical_load_unit": f.typical_load_unit,
-            "contains_protease": int(f.contains_protease),
-            "is_heat_processed": int(f.is_heat_processed),
-            "structural_json": json.dumps([s.value for s in f.structural]),
-            "notes": f.notes,
-        }
-        for prefix in ("ph", "water_content_pct", "typical_load_value"):
-            row.update(_tracked_cols(prefix, getattr(f, prefix)))
-        _insert(conn, "food", row)
+        _insert(conn, "food", food_to_row(f))
 
 
 def create_database(path: Path | str, seed: Seed | None = None) -> Path:
