@@ -2,7 +2,10 @@ import ast
 import pathlib
 
 ENGINE_DIR = pathlib.Path("src/foodbrew/engine")
-FORBIDDEN = {"json", "sqlite3", "pathlib", "os", "foodbrew.db", "foodbrew.seedload"}
+#: `json` is deliberately not forbidden: `engine/patch.py` and `engine/variants.py`
+#: use it for a patch's canonical text (the dedupe key), which is serialization,
+#: not I/O — the engine still touches no file or socket (plan Task 3/5 boundary note).
+FORBIDDEN = {"sqlite3", "pathlib", "os", "foodbrew.db", "foodbrew.seedload"}
 
 
 def _imported_modules(path):
