@@ -12,7 +12,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
-from foodbrew.engine import evaluate
+from foodbrew.engine import ValidationRejection, evaluate
 from foodbrew.engine.flags import HEADLINE_DISPLAY, group_findings
 from foodbrew.engine.types import DwellProfile, RuleFinding, Verdict
 from foodbrew.engine.variants import suggest
@@ -20,7 +20,7 @@ from foodbrew.store import variants as variant_store
 from foodbrew.store.clock import now_iso
 from foodbrew.store.formulations import hydrate_context
 from foodbrew.store.ids import new_id
-from foodbrew.store.snapshot import snapshot_from_context
+from foodbrew.store.snapshot import SnapshotChange, diff_snapshots, snapshot_from_context
 from foodbrew.store.variants import StoredSuggestion
 
 
@@ -134,6 +134,28 @@ def list_recent(conn, limit: int = 10) -> tuple[StoredEvaluation, ...]:
         )
     ]
     return tuple(get(conn, i) for i in ids)
+
+
+def freshness(
+    conn: sqlite3.Connection, stored: StoredEvaluation
+) -> tuple[bool, tuple[SnapshotChange, ...]]:
+    """Has anything this evaluation read changed since it ran?
+
+    Cheap because M2 made the snapshot byte-stable: freeze the formulation's
+    current context and compare two strings. Called from the evaluation detail
+    endpoint only — a list of summaries would otherwise mean one full catalogue
+    hydration per row (plan decision #9).
+    """
+    try:
+        ctx = hydrate_context(conn, stored.formulation_id)
+    except ValidationRejection:
+        # The formulation is gone. Nothing can be re-run, so nothing is fresh.
+        return True, ()
+
+    current = snapshot_from_context(ctx)
+    if current == stored.input_snapshot_json:
+        return False, ()
+    return True, diff_snapshots(stored.input_snapshot_json, current)
 
 
 def _assemble(
