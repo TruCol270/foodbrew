@@ -1,9 +1,11 @@
 """Request-scoped dependencies.
 
-Every endpoint is a plain `def`, so FastAPI runs it in a worker thread and the
-connection opened here is used and closed in that same thread. sqlite3 objects
-are thread-confined; an async endpoint sharing a connection would be a bug that
-only appears under concurrency (plan decision #10).
+Every endpoint is a plain `def`, so FastAPI runs it via AnyIO's threadpool
+rather than the event loop. The connection opened here is scoped to one
+request and never shared across requests — but the OS thread that opens it and
+the OS thread that uses it can differ (see store/connection.py's docstring for
+why, and plan decision #10's amendment for the concurrency bug this caused
+before `check_same_thread=False` was added there).
 """
 
 from __future__ import annotations
