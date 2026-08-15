@@ -2,7 +2,9 @@ import sqlite3
 
 import pytest
 
+from foodbrew.db import ensure_database
 from foodbrew.db.bootstrap import EXPECTED_TABLES, create_database
+from foodbrew.store.connection import connect
 
 
 @pytest.fixture
@@ -50,3 +52,56 @@ def test_bootstrap_is_idempotent(tmp_path):
     conn = sqlite3.connect(path)
     assert conn.execute("SELECT COUNT(*) FROM enzyme").fetchone()[0] == 12
     conn.close()
+
+
+def test_ensure_database_creates_a_missing_database(tmp_path):
+    path = tmp_path / "foodbrew.db"
+    ensure_database(path)
+    with connect(path) as conn:
+        count = conn.execute("SELECT COUNT(*) AS n FROM enzyme").fetchone()["n"]
+    assert count == 12
+
+
+def test_ensure_database_preserves_edits_to_an_existing_database(tmp_path):
+    """Plan decision #1: a restart must not revert the founder's edits."""
+    path = tmp_path / "foodbrew.db"
+    ensure_database(path)
+    with connect(path) as conn:
+        conn.execute(
+            "UPDATE enzyme SET temp_min_c = 20.0, temp_min_c_status = 'user_provided'"
+            " WHERE id = 'lactase_fungal_acid'"
+        )
+        conn.commit()
+
+    ensure_database(path)  # a second boot
+
+    with connect(path) as conn:
+        row = conn.execute(
+            "SELECT temp_min_c, temp_min_c_status FROM enzyme WHERE id = 'lactase_fungal_acid'"
+        ).fetchone()
+    assert row["temp_min_c"] == 20.0
+    assert row["temp_min_c_status"] == "user_provided"
+
+
+def test_create_database_still_refreshes_reference_data(tmp_path):
+    """The destructive path is kept deliberately — it is M3's reset-to-baseline."""
+    path = tmp_path / "foodbrew.db"
+    create_database(path)
+    with connect(path) as conn:
+        conn.execute("UPDATE enzyme SET temp_min_c = 20.0 WHERE id = 'lactase_fungal_acid'")
+        conn.commit()
+
+    create_database(path)
+
+    with connect(path) as conn:
+        row = conn.execute(
+            "SELECT temp_min_c FROM enzyme WHERE id = 'lactase_fungal_acid'"
+        ).fetchone()
+    assert row["temp_min_c"] is None
+
+
+def test_ensure_database_raises_on_a_file_missing_tables(tmp_path):
+    path = tmp_path / "not-a-foodbrew.db"
+    sqlite3.connect(path).close()
+    with pytest.raises(ValueError, match="schema"):
+        ensure_database(path)
