@@ -28,3 +28,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's dependency injection requires Depends(...)/Query(...) as an
+# argument default -- that is the API, not a mutable-default bug B008 exists
+# to catch. Scoped to the routers so B008 still fires anywhere else.
+"src/foodbrew/api/routers/*.py" = ["B008"]

@@ -51,7 +51,8 @@ def test_every_tracked_value_on_the_wire_carries_a_valid_status(client, evaluate
 
 def test_no_numeric_enzyme_field_is_serialized_bare(client):
     """Plan decision #7 — a bare float would strand the number from its label."""
-    enzyme = next(e for e in client.get("/api/v1/enzymes").json() if e["id"] == "lactase_fungal_acid")
+    enzymes = client.get("/api/v1/enzymes").json()
+    enzyme = next(e for e in enzymes if e["id"] == "lactase_fungal_acid")
     for field in ("ph_min", "ph_max", "ph_shelf_stable_min", "dose_min", "is_gras"):
         assert isinstance(enzyme[field], dict)
         assert set(enzyme[field]) == TRACKED_KEYS
