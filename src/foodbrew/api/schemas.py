@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -415,6 +415,9 @@ class EvaluationOut(BaseModel):
     #: True when a record this evaluation read has changed since it ran.
     stale: bool = False
     changes: list[SnapshotChangeOut] = Field(default_factory=list)
+    #: Spec §6.3 — the Observed column, when a trial exists (plan decision #10).
+    observed: ObservedEnvelopeOut | None = None
+    trial_ids: list[str] = Field(default_factory=list)
 
 
 class EvaluationSummaryOut(BaseModel):
@@ -427,3 +430,179 @@ class EvaluationSummaryOut(BaseModel):
 
 class ErrorOut(BaseModel):
     detail: str
+
+
+class CheckpointOut(BaseModel):
+    id: str
+    kind: str
+    prompt: str
+    raised_by: list[str]
+    due_elapsed_minutes: int | None
+    application_food_id: str
+    #: Empty when no observation fills this one (make-it, pH, symptom).
+    observation_type: str
+
+
+class ProtocolOut(BaseModel):
+    engine_version: str
+    checkpoints: list[CheckpointOut]
+    notes: list[str]
+
+
+class TrackedDoseOut(BaseModel):
+    enzyme_id: str
+    enzyme_name: str
+    dose_unit: str
+    dose_per_serving: float | None
+    units_delivered: float | None
+    threshold: TrackedOut
+    meets_threshold: bool | None
+    ratio: float | None
+    blocking_field: str
+
+
+class SymptomDoseOut(BaseModel):
+    """Spec §5.3's computed_dose_json, and §10 screen 6's live preview."""
+
+    trigger_food_id: str
+    trigger_food_name: str
+    amount_value: float | None
+    amount_unit: str
+    doses_used: float | None
+    substrate_ids: list[str]
+    enzymes: list[TrackedDoseOut]
+    substrate_load: TrackedOut
+    note: str
+
+
+class ObservationIn(BaseModel):
+    """No `dwell_bucket` and no tier: the server derives both (plan decision #2).
+    No `symptom` in the Literal: symptoms have their own endpoint (decision #6)."""
+
+    type: Literal["taste", "usability", "food_texture", "storage"]
+    elapsed_minutes: int = Field(ge=0)
+    score: int | None = Field(default=None, ge=1, le=5)
+    free_text: str = ""
+    was_blinded: bool = False
+    had_undressed_control: bool = False
+    application_food_id: str = ""
+
+
+class ObservationOut(BaseModel):
+    id: str
+    type: str
+    observed_at: str
+    elapsed_minutes: int
+    dwell_bucket: str
+    score: int | None
+    free_text: str
+    was_blinded: bool
+    had_undressed_control: bool
+    application_food_id: str
+    #: Spec §6.6 — derived, never stored, never sent by a client.
+    confidence_tier: str
+    export_class: str
+
+
+class SymptomEntryIn(BaseModel):
+    trigger_food_id: str
+    amount_value: float | None = Field(default=None, ge=0)
+    amount_unit: str = "servings"
+    doses_used: float | None = Field(default=None, ge=0)
+    outcome_score: int | None = Field(default=None, ge=1, le=5)
+    notes: str = ""
+
+
+class SymptomPreviewIn(BaseModel):
+    trigger_food_id: str
+    amount_value: float | None = Field(default=None, ge=0)
+    amount_unit: str = "servings"
+    doses_used: float | None = Field(default=None, ge=0)
+
+
+class SymptomEntryOut(BaseModel):
+    id: str
+    eaten_at: str
+    trigger_food_id: str
+    amount_value: float | None
+    amount_unit: str
+    doses_used: float | None
+    outcome_score: int | None
+    notes: str
+    computed_dose: SymptomDoseOut
+
+
+class BatchIn(BaseModel):
+    batch_size_g: float | None = Field(default=None, ge=0)
+    measured_ph: float | None = Field(default=None, ge=0, le=14)
+    ph_method: Literal["strip", "meter", "none"] = "none"
+    make_minutes: int | None = Field(default=None, ge=0)
+    difficulty_score: int | None = Field(default=None, ge=1, le=5)
+    enzyme_source_note: str = ""
+    enzyme_addition_step: int | None = None
+    process_notes: str = ""
+    storage_mode: Literal["refrigerated", "ambient"] = "refrigerated"
+
+
+class BatchOut(BaseModel):
+    id: str
+    made_at: str
+    batch_size_g: float | None
+    measured_ph: float | None
+    ph_method: str
+    make_minutes: int | None
+    difficulty_score: int | None
+    enzyme_source_note: str
+    enzyme_addition_step: int | None
+    process_notes: str
+    storage_mode: str
+    observations: list[ObservationOut]
+    symptom_entries: list[SymptomEntryOut]
+    #: Scheduled checkpoints this batch has reached and not answered.
+    due_checkpoint_ids: list[str]
+    satisfied_checkpoint_ids: list[str]
+    #: True when this batch's pH permits an ambient watch (§3 Workflow E).
+    ambient_storage_allowed: bool
+
+
+class TrialOut(BaseModel):
+    id: str
+    evaluation_id: str
+    formulation_id: str
+    status: str
+    started_at: str | None
+    notes: str
+    protocol: ProtocolOut
+    batches: list[BatchOut]
+
+
+class TrialSummaryOut(BaseModel):
+    id: str
+    evaluation_id: str
+    formulation_id: str
+    status: str
+    started_at: str | None
+    batch_count: int
+    observation_count: int
+    due_checkpoint_count: int
+
+
+class TrialStatusIn(BaseModel):
+    """Only the two terminals — the rest of the machine runs itself (decision #12)."""
+
+    status: Literal["complete", "abandoned"]
+
+
+class ObservedProfileOut(BaseModel):
+    verdict: str | None
+    confidence_tier: str | None
+    observation_count: int
+    driving_observation_id: str
+
+
+class ObservedEnvelopeOut(BaseModel):
+    """Spec §6.3's second column. Computed on read; it changes no prediction."""
+
+    trial_id: str | None
+    profiles: dict[str, ObservedProfileOut]
+    scale_note: str
