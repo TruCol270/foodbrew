@@ -1029,7 +1029,6 @@ benchmark-based; this is the same arithmetic applied to one meal.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 from foodbrew.engine.dosing import assess_dose
@@ -1777,7 +1776,6 @@ into `trial.protocol_json` (plan decision #3). Nothing here ever writes to
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 from foodbrew import ENGINE_VERSION
@@ -2136,7 +2134,7 @@ def test_elapsed_minutes_is_whole_minutes_and_never_negative():
 
 def test_due_now_reports_reached_and_unanswered_checkpoints(conn, evaluation):
     trial_id = trials.create(conn, evaluation.id)
-    batch_id = trials.add_batch(conn, trial_id, batch_size_g=200.0)
+    trials.add_batch(conn, trial_id, batch_size_g=200.0)
     trial = trials.get(conn, trial_id)
     batch = trial.batches[0]
     due = trials.due_now(trial, batch, now=batch.made_at)
@@ -2214,7 +2212,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 from foodbrew.engine import ValidationRejection
@@ -2484,11 +2481,16 @@ def test_a_texture_observation_has_to_name_the_food(conn, batch):
 
 
 def test_a_food_the_formulation_never_claimed_is_refused(conn, batch):
+    # `milk`, not some unrelated seed food: `snapshot.referenced_ids` only
+    # freezes foods the formulation reaches (recipe ∪ trigger ∪ application), so
+    # a food it never mentions is absent from the snapshot entirely and trips the
+    # earlier "Unknown food" branch. Milk is referenced — it is the trigger food —
+    # but is not an application food, which is the branch under test.
     _trial_id, batch_id = batch
     with pytest.raises(ValidationRejection) as exc:
         observations.add_observation(
             conn, batch_id, type="food_texture", elapsed_minutes=0, score=2,
-            application_food_id="cucumber",
+            application_food_id="milk",
         )
     assert "poured on" in str(exc.value)
 
@@ -2587,7 +2589,7 @@ import pytest
 from foodbrew.engine.conventions import resolve_recipe_ph
 from foodbrew.engine.types import TruthLabel
 from foodbrew.store import evaluations as evaluations_store
-from foodbrew.store import formulations, observations, recipes, trials
+from foodbrew.store import formulations, recipes, trials
 
 
 @pytest.fixture
