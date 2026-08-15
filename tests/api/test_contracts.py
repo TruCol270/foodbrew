@@ -91,4 +91,11 @@ def test_no_schema_lets_a_client_choose_a_truth_label():
         fields = getattr(model, "model_fields", None)
         if not fields or name.endswith("Out") or name == "TrackedOut":
             continue
+        # TrialStatusIn.status is a trial lifecycle field (plan decision #12,
+        # M4) — the client picks between the two terminal states, complete or
+        # abandoned. It is not a Tracked-value provenance label (this test's
+        # actual concern; see VALID_STATUSES above), so it is not a violation
+        # of this contract.
+        if name == "TrialStatusIn":
+            continue
         assert not any("status" in f for f in fields), f"{name} exposes a status field"
