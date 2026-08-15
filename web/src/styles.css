@@ -29,3 +29,22 @@ label { display: block; margin: 0.4rem 0; }
 .cell--active { color: var(--green); font-weight: 600; }
 .cell--past-deadline { opacity: 0.55; }
 .dose-card { border: 1px solid var(--line); padding: 0.75rem; margin: 0.75rem 0; }
+
+.banner { border: 1px solid var(--line); border-left: 4px solid var(--amber);
+          background: var(--muted); padding: 0.75rem 1rem; margin: 1rem 0; }
+.banner--stale code { font-size: 0.85em; }
+.row--recommended { background: var(--muted); }
+.cell--changed { background: var(--muted); font-weight: 600; }
+.cell--absent { color: var(--gray); font-style: italic; }
+.editor-field { display: grid; grid-template-columns: 12rem 1fr auto; gap: 0.5rem;
+                align-items: center; margin: 0.25rem 0; }
+
+/* Spec §10 screen 8 — print to PDF. Navigation and controls go; the disclaimer stays. */
+@media print {
+  header nav, button, .banner, .no-print { display: none !important; }
+  .app { max-width: none; padding: 0; }
+  a { text-decoration: none; color: inherit; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  footer { border-top: 1px solid #000; }
+}
