@@ -5,7 +5,7 @@
 
   --bg: #ffffff; --surface: #ffffff; --muted: #f5f6f7;
   --ink: #1b1c1e; --ink-soft: #5c5f66; --line: #d7d9dd; --line-strong: #b9bcc2;
-  --accent: #17527a; --accent-bg: #eaf2f8;
+  --accent: #17527a; --accent-bg: #eaf2f8; --on-accent: #fff;
 
   /* 4px spacing scale. Every margin and pad in this file uses one of these. */
   --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem;
@@ -32,7 +32,7 @@
     --ink: #e9eaec; --ink-soft: #a8adb4; --line: #33383d; --line-strong: #474d54;
     --red: #f2837b; --amber: #e0b341; --gray: #a8adb4; --green: #6cc48a;
     --red-bg: #2a1917; --amber-bg: #29220f; --gray-bg: #24282b; --green-bg: #14251a;
-    --accent: #7db8e0; --accent-bg: #16303f;
+    --accent: #7db8e0; --accent-bg: #16303f; --on-accent: #0d1a22;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
   }
 }
@@ -68,7 +68,7 @@ button, .button {
 button:hover:not(:disabled) { background: var(--muted); }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 button[type='submit'], .button--primary {
-  background: var(--accent); border-color: var(--accent); color: #fff;
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
 }
 button[type='submit']:hover:not(:disabled) { filter: brightness(1.08); }
 
