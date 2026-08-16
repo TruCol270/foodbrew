@@ -78,6 +78,8 @@ class EnzymeOut(BaseModel):
     dose_max: TrackedOut
     dose_evidence_threshold: TrackedOut
     is_gras: TrackedOut
+    #: ISO-8601 of the newest founder edit, or None if this record is untouched.
+    last_edited: str | None = None
 
     @classmethod
     def of(cls, e: Enzyme) -> EnzymeOut:
@@ -97,7 +99,7 @@ class EnzymeOut(BaseModel):
                 name: getattr(e, name)
                 for name in cls.model_fields
                 if name not in tracked_fields
-                and name not in {"aliases", "deadline", "degrades_structural"}
+                and name not in {"aliases", "deadline", "degrades_structural", "last_edited"}
             },
             **tracked_fields,
         )
@@ -120,6 +122,8 @@ class FoodOut(BaseModel):
     ph: TrackedOut
     water_content_pct: TrackedOut
     typical_load_value: TrackedOut
+    #: ISO-8601 of the newest founder edit, or None if this record is untouched.
+    last_edited: str | None = None
 
     @classmethod
     def of(cls, f: Food) -> FoodOut:

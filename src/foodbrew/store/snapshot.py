@@ -309,9 +309,21 @@ def _record_changes(kind: str, old: Mapping, new: Mapping) -> list[SnapshotChang
             continue
         for name in sorted(set(before) | set(after)):
             if before.get(name) != after.get(name):
-                changes.append(
-                    SnapshotChange(kind, record_id, name, before.get(name), after.get(name))
-                )
+                if name not in before:
+                    # Plan decision #3: a key present in the new payload and
+                    # absent from the old one is a catalogue upgrade (a field
+                    # added by a later engine version), not a founder edit —
+                    # the staleness banner must not conflate the two.
+                    changes.append(
+                        SnapshotChange(
+                            kind="field_added", record_id=record_id, field=name,
+                            before=None, after=after.get(name),
+                        )
+                    )
+                else:
+                    changes.append(
+                        SnapshotChange(kind, record_id, name, before.get(name), after.get(name))
+                    )
     return changes
 
 

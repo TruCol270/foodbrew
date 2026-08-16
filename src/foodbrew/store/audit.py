@@ -54,6 +54,26 @@ def record(
     )
 
 
+def last_edited_for(conn: sqlite3.Connection, table: str) -> dict[str, str]:
+    """Newest edit timestamp per record of `table`, keyed by record id.
+
+    Derived, not stored (plan decision #5): every edit already writes an
+    audit_event whose entity is "<table>:<id>". A global reset writes
+    entity='reference' and therefore does NOT stamp individual records — a
+    record with no row here has never been edited, and the editor says
+    "shipped value" rather than inventing a date.
+    """
+    prefix = f"{table}:"
+    return {
+        row["entity"][len(prefix):]: row["last_edited"]
+        for row in conn.execute(
+            "SELECT entity, MAX(timestamp) AS last_edited FROM audit_event"
+            " WHERE entity LIKE ? GROUP BY entity",
+            (prefix + "%",),
+        )
+    }
+
+
 def list_recent(conn: sqlite3.Connection, limit: int = 50) -> tuple[AuditEvent, ...]:
     rows = conn.execute(
         "SELECT * FROM audit_event ORDER BY timestamp DESC, id DESC LIMIT ?", (limit,)
