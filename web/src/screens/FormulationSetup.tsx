@@ -106,6 +106,7 @@ export default function FormulationSetup() {
         {applicationFoods.map((f) => (
           <label key={f.id}>
             <input type="checkbox" checked={applications.includes(f.id)}
+                   data-testid={`application-${f.id}`}
                    onChange={() => toggle(applications, f.id, setApplications)} />
             {f.name}
           </label>
