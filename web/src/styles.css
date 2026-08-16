@@ -50,3 +50,15 @@ label { display: block; margin: 0.4rem 0; }
   tr { page-break-inside: avoid; }
   footer { border-top: 1px solid #000; }
 }
+
+/* Spec §6.5 — the checklist reads at a glance: due now, done, not yet. */
+.checkpoint--due { font-weight: 600; }
+.checkpoint--done { opacity: 0.6; }
+.checkpoint--later { opacity: 0.8; }
+
+[data-testid='dose-preview'] { border-left: 3px solid #888; padding-left: 0.75rem; }
+[data-testid='observed-list'] blockquote {
+  margin: 0.25rem 0 0.5rem 1rem;
+  border-left: 2px solid #ccc;
+  padding-left: 0.5rem;
+}
