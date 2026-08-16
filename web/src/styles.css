@@ -192,3 +192,11 @@ label input[type='checkbox'] { width: auto; min-height: auto; margin-right: var(
   border-left: 2px solid #ccc;
   padding-left: 0.5rem;
 }
+
+.meter { position: relative; height: 1.5rem; background: var(--muted);
+         border-radius: var(--radius-sm); overflow: hidden; margin: var(--s2) 0; }
+.meter__fill { position: absolute; inset: 0 auto 0 0; }
+.meter__fill--over { background: var(--green-bg); border-right: 2px solid var(--green); }
+.meter__fill--under { background: var(--amber-bg); border-right: 2px solid var(--amber); }
+.meter__label { position: relative; font-size: var(--t-xs); line-height: 1.5rem;
+                padding-left: var(--s2); color: var(--ink); }
