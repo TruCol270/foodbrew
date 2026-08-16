@@ -6,6 +6,7 @@ import FormulationSetup from './screens/FormulationSetup'
 import Home from './screens/Home'
 import RecipeBuilder from './screens/RecipeBuilder'
 import Report from './screens/Report'
+import Trial from './screens/Trial'
 import Verdict from './screens/Verdict'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/recipes/:recipeId/formulation" element={<FormulationSetup />} />
           <Route path="/evaluations/:evaluationId" element={<Verdict />} />
           <Route path="/evaluations/:evaluationId/report" element={<Report />} />
+          <Route path="/trials/:trialId" element={<Trial />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/database" element={<Database />} />
         </Routes>

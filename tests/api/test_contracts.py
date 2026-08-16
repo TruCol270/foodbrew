@@ -3,6 +3,7 @@ tests/engine/test_purity.py: cheap, global, and hard to violate by accident.
 """
 
 import pathlib
+from typing import get_args
 
 import pytest
 
@@ -86,9 +87,25 @@ def test_the_engine_never_imports_the_store_or_api_layers():
 
 
 def test_no_schema_lets_a_client_choose_a_truth_label():
+    """§5.4: a truth label is the server's to write, never a client's to pick.
+
+    The check is semantic, not a name whitelist. A request field is a violation
+    when it is a Tracked value's provenance label — either by name (`*_status`,
+    the column convention) or by admitting any of the five labels as a value.
+    M4's `TrialStatusIn.status` is a workflow state whose only values are
+    `complete` and `abandoned` (plan decision #12), so it passes on the merits;
+    a `ph_status: str` smuggled onto a request model still fails.
+    """
     for name in dir(schemas):
         model = getattr(schemas, name)
         fields = getattr(model, "model_fields", None)
         if not fields or name.endswith("Out") or name == "TrackedOut":
             continue
-        assert not any("status" in f for f in fields), f"{name} exposes a status field"
+        for field_name, field in fields.items():
+            assert not field_name.endswith("_status"), (
+                f"{name}.{field_name} lets a client write a provenance label"
+            )
+            admitted = set(get_args(field.annotation))
+            assert not (admitted & VALID_STATUSES), (
+                f"{name}.{field_name} admits truth labels: {sorted(admitted & VALID_STATUSES)}"
+            )

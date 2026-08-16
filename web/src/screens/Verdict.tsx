@@ -46,6 +46,17 @@ export default function Verdict() {
     }
   }, [evaluation, navigate])
 
+  const startTrial = useCallback(async () => {
+    if (!evaluation) return
+    setError(null)
+    try {
+      const trial = await api.startTrial(evaluation.id)
+      navigate(`/trials/${trial.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }, [evaluation, navigate])
+
   if (error) return <p className="error">{error}</p>
   if (!evaluation) return <p>Loading…</p>
 
@@ -72,9 +83,26 @@ export default function Verdict() {
 
       <DoseCards cards={evaluation.dose_cards} />
       <GiStrip lanes={evaluation.gi_strip} />
-      <EnvelopePanel envelope={evaluation.envelope} />
+      <EnvelopePanel envelope={evaluation.envelope} observed={evaluation.observed} />
       <FormatRecommendationPanel recommendation={evaluation.format_recommendation} />
       <VariantSuggestions suggestions={evaluation.suggestions} onApply={applyVariant} />
+
+      <p className="no-print">
+        {evaluation.trial_ids.length === 0 ? (
+          <button type="button" data-testid="start-trial" onClick={startTrial}>
+            Plan a kitchen trial for this
+          </button>
+        ) : (
+          <>
+            <Link to={`/trials/${evaluation.trial_ids[0]}`} data-testid="open-trial">
+              Open the kitchen trial
+            </Link>{' '}
+            <button type="button" data-testid="start-trial" onClick={startTrial}>
+              Start another trial
+            </button>
+          </>
+        )}
+      </p>
     </>
   )
 }

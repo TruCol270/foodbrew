@@ -17,6 +17,7 @@ from foodbrew.api.routers import (
     proposals,
     recipes,
     records,
+    trials,
     variants,
 )
 from foodbrew.api.settings import Settings, load_settings
@@ -49,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     for router in (
         catalog.router, recipes.router, formulations.router, evaluations.router,
-        variants.router, records.router, proposals.router, export.router,
+        variants.router, records.router, proposals.router, export.router, trials.router,
     ):
         app.include_router(router, prefix="/api/v1")
 

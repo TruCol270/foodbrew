@@ -131,3 +131,26 @@ def synthetic_rapid_enzyme(seed):
         ),
     )
     return catalog
+
+
+@pytest.fixture
+def vinaigrette_rows(conn):
+    """The golden fixture (a) vinaigrette, persisted. Mirrors tests/api/conftest.py's
+    `vinaigrette`, which is scoped to the API suite and cannot be reused here."""
+    from foodbrew.store import formulations, recipes
+
+    recipe_id = recipes.create(conn, name="vinaigrette", notes="", ingredients=[
+        {"food_id": "olive_oil", "amount_g": 100.0, "order": 1},
+        {"food_id": "white_vinegar", "amount_g": 50.0, "order": 2},
+    ])
+    formulation_id = formulations.create(
+        conn, recipe_id=recipe_id, format="premixed_wet",
+        target_trigger_food_ids=["milk"], application_food_ids=["romaine"],
+        dwell_profile=None,
+        enzymes=[{"enzyme_id": "lactase_fungal_acid", "dose": 9000.0, "phase": "wet",
+                  "encapsulated": False, "source_choice": ""}],
+        serving_size_g=30.0, measured_ph=3.0,
+        process_steps=[{"order": 1, "label": "whisk", "is_heat": False}],
+        enzyme_addition_index=1, parent_formulation_id=None,
+    )
+    return {"recipe_id": recipe_id, "formulation_id": formulation_id}

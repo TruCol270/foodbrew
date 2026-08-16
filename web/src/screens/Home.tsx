@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { api } from '../api/client'
-import type { EvaluationSummary, Recipe } from '../api/types'
+import type { EvaluationSummary, Recipe, TrialSummary } from '../api/types'
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [evaluations, setEvaluations] = useState<EvaluationSummary[]>([])
+  const [trials, setTrials] = useState<TrialSummary[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([api.recipes(), api.recentEvaluations()])
-      .then(([r, e]) => { setRecipes(r); setEvaluations(e) })
+    Promise.all([api.recipes(), api.recentEvaluations(), api.activeTrials()])
+      .then(([r, e, t]) => { setRecipes(r); setEvaluations(e); setTrials(t) })
       .catch((err) => setError(err.message))
   }, [])
 
@@ -53,6 +54,25 @@ export default function Home() {
                 </td>
                 <td>{e.created_at.slice(0, 16).replace('T', ' ')}</td>
                 <td>{e.engine_version}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h2>Trials running</h2>
+      {trials.length === 0 ? (
+        <p>No kitchen trial is open. Start one from a verdict.</p>
+      ) : (
+        <table data-testid="active-trials">
+          <thead><tr><th>Trial</th><th>Batches</th><th>Recorded</th><th>Due now</th></tr></thead>
+          <tbody>
+            {trials.map((t) => (
+              <tr key={t.id}>
+                <td><Link to={`/trials/${t.id}`}>{t.status}</Link></td>
+                <td>{t.batch_count}</td>
+                <td>{t.observation_count}</td>
+                <td>{t.due_checkpoint_count}</td>
               </tr>
             ))}
           </tbody>

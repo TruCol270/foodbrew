@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from foodbrew.engine.flags import group_findings
 from foodbrew.engine.format_search import FORMAT_TITLES, FormatRecommendation
+from foodbrew.engine.observations import TEXTURE_SCALE_NOTE, ExportClass
 from foodbrew.engine.types import (
     DwellProfile,
     EvalContext,
@@ -79,6 +80,65 @@ class ReportSuggestion:
     raised_by: tuple[str, ...]
 
 
+_OCCASION_SHORT: Mapping[DwellProfile, str] = {
+    DwellProfile.IMMEDIATE: "within the hour",
+    DwellProfile.PACKED: "1 to 8 hours",
+    DwellProfile.MARINADE: "8 hours or more",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ReportObservation:
+    """One `trial_observation`, already classified by §6.6."""
+
+    observation_type: str
+    export_class: ExportClass
+    tier: str
+    occasion: str
+    observed_at: str
+    elapsed_minutes: int
+    application_food_name: str = ""
+    score: int | None = None
+    #: The founder's own words. Quoted, never adopted (plan decision #13).
+    free_text: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ReportSymptomEntry:
+    """One `trial_symptom_entry`, with its frozen dose math already rendered."""
+
+    eaten_at: str
+    trigger_food_name: str
+    amount: str
+    doses_used: float | None
+    outcome_score: int | None
+    #: One line per enzyme: delivered vs threshold, or what blocked the sum.
+    dose_lines: tuple[str, ...] = field(default_factory=tuple)
+    notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class TrialReport:
+    """Everything §6.6 needs about one trial, assembled by the caller."""
+
+    trial_id: str
+    status: str
+    batch_count: int
+    observations: tuple[ReportObservation, ...] = field(default_factory=tuple)
+    symptoms: tuple[ReportSymptomEntry, ...] = field(default_factory=tuple)
+    #: Display text per dwell profile, e.g. "clearly softer (anecdote)".
+    observed_envelope: Mapping[DwellProfile, str] = field(default_factory=dict)
+    #: The batch pH, when one was measured, phrased for the report.
+    measured_ph_note: str = ""
+
+    @property
+    def observation_count(self) -> int:
+        return len(self.observations) + len(self.symptoms)
+
+    def of_class(self, export_class: ExportClass) -> tuple[ReportObservation, ...]:
+        return tuple(o for o in self.observations if o.export_class is export_class)
+
+
 @dataclass(frozen=True, slots=True)
 class ReportInput:
     """Everything the report needs, already frozen. The renderer derives the rest."""
@@ -95,6 +155,8 @@ class ReportInput:
     suggestions: tuple[ReportSuggestion, ...] = field(default_factory=tuple)
     #: True when a referenced record has changed since this evaluation ran.
     stale: bool = False
+    #: None until the founder has run a trial against this evaluation (§6.6).
+    trial: TrialReport | None = None
 
 
 def _tracked(value: Tracked, unit: str = "") -> str:
@@ -245,11 +307,15 @@ def _envelope_section(data: ReportInput) -> list[str]:
         "| Occasion | Predicted | Observed |",
         "| --- | --- | --- |",
     ]
+    observed = data.trial.observed_envelope if data.trial else {}
     for profile in DwellProfile:
         verdict = data.envelope.get(profile)
         predicted = _VERDICT_TEXT[verdict] if verdict is not None else "not evaluated"
-        lines.append(f"| {_OCCASION_TEXT[profile]} | {predicted} | no trial yet |")
+        seen = observed.get(profile) or ("no trial yet" if data.trial is None else "not looked at")
+        lines.append(f"| {_OCCASION_TEXT[profile]} | {predicted} | {seen} |")
     lines.append("")
+    if data.trial and observed:
+        lines += [TEXTURE_SCALE_NOTE, ""]
     return lines
 
 
@@ -301,15 +367,111 @@ def _open_questions_section(data: ReportInput) -> list[str]:
     return lines
 
 
-def _observed_section() -> list[str]:
-    """Spec §10 screen 8 and §6.6 — filled by M4's kitchen trial."""
-    return [
+def _quote(text: str) -> list[str]:
+    """Her words, reproduced and attributed — never rewritten (plan decision #13)."""
+    return [f"> {line}" for line in text.strip().splitlines()] + [""]
+
+
+def _observation_lines(records: Sequence[ReportObservation]) -> list[str]:
+    lines: list[str] = []
+    for record in records:
+        subject = f" on {record.application_food_name}" if record.application_food_name else ""
+        score = f", scored {record.score} of 5" if record.score is not None else ""
+        lines.append(
+            f"- **{record.observation_type.replace('_', ' ')}**{subject} — "
+            f"{record.occasion} after making it{score} ({record.tier}, "
+            f"observed {record.observed_at[:16].replace('T', ' ')})"
+        )
+        if record.free_text:
+            lines += _quote(record.free_text)
+    lines.append("")
+    return lines
+
+
+def _observed_section(data: ReportInput) -> list[str]:
+    """Spec §10 screen 8 and §6.6 — the split by how much her judgement counts."""
+    trial = data.trial
+    if trial is None:
+        return [
+            "## What was observed",
+            "",
+            "No trial has been recorded for this formulation yet. Everything above is a "
+            "prediction from the rules and the data behind them; nothing here was measured.",
+            "",
+        ]
+
+    lines = [
         "## What was observed",
         "",
-        "No trial has been recorded for this formulation yet. Everything above is a "
-        "prediction from the rules and the data behind them; nothing here was measured.",
+        f"Trial {trial.trial_id}, {trial.status}. {trial.batch_count} "
+        f"batch(es), {trial.observation_count} record(s). This was one person, in a "
+        "kitchen, mostly unblinded — so each section below says how much weight its "
+        "contents carry.",
         "",
     ]
+    if trial.status == "abandoned":
+        lines += [
+            f"This trial was abandoned after {trial.observation_count} record(s). What "
+            "is below was really recorded; what is missing was never run.",
+            "",
+        ]
+    if trial.measured_ph_note:
+        lines += [trial.measured_ph_note, ""]
+
+    findings = trial.of_class(ExportClass.FINDING)
+    lines += ["### Findings", ""]
+    if findings:
+        lines += [
+            "Taste, how it was to make, how it was to use — subjective questions where "
+            "her answer is the data — plus any applied-food texture she compared "
+            "against an undressed portion.",
+            "",
+        ]
+        lines += _observation_lines(findings)
+    else:
+        lines += ["Nothing in this trial reached this bar yet.", ""]
+
+    observations = trial.of_class(ExportClass.OBSERVATION)
+    lines += ["### Observations", ""]
+    if observations:
+        lines += [
+            "Watched, not controlled. Applied-food texture with no undressed portion to "
+            "compare against, and storage watching.",
+            "",
+        ]
+        lines += _observation_lines(observations)
+    else:
+        lines += ["Nothing recorded in this class.", ""]
+
+    lines += ["### Hypotheses for a food scientist to test", ""]
+    if trial.symptoms:
+        lines += [
+            "Symptom response, unblinded, single subject, on a product she has a stake "
+            "in. This is the weakest measurement here and is listed so a real test can "
+            "be designed around it. The dose arithmetic is attached to every entry, so "
+            "a null result can be read as an under-dose rather than as a failure.",
+            "",
+        ]
+        for entry in trial.symptoms:
+            outcome = (
+                f"outcome scored {entry.outcome_score} of 5"
+                if entry.outcome_score is not None
+                else "no outcome score"
+            )
+            doses = "not recorded" if entry.doses_used is None else f"{entry.doses_used}"
+            lines.append(
+                f"- **{entry.trigger_food_name}**, {entry.amount}, {doses} dose(s) — "
+                f"{outcome} ({entry.eaten_at[:16].replace('T', ' ')})"
+            )
+            for line in entry.dose_lines:
+                lines.append(f"  - {line}")
+            if entry.notes:
+                lines += _quote(entry.notes)
+        lines.append("")
+    else:
+        lines += ["No meal was logged in this trial.", ""]
+
+    return lines
 
 
 def _provenance_section(data: ReportInput) -> list[str]:
@@ -365,7 +527,7 @@ def render_markdown(data: ReportInput) -> str:
     lines += _envelope_section(data)
     lines += _format_section(data)
     lines += _suggestions_section(data)
-    lines += _observed_section()
+    lines += _observed_section(data)
     lines += _open_questions_section(data)
     lines += _provenance_section(data)
     lines += ["---", "", DISCLAIMER, ""]
