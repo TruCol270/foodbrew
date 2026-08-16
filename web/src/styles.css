@@ -178,7 +178,7 @@ label input[type='checkbox'] { width: auto; min-height: auto; margin-right: var(
   .finding-group { break-inside: avoid; }
   .finding-group > summary { list-style: none; }
   details:not([open]) > *:not(summary) { display: revert; }  /* print collapsed groups too */
-  footer { border-top: 1px solid #000; }
+  footer { border-top: 1px solid var(--ink); }
   :root { --shadow: none; }
 }
 
@@ -187,10 +187,10 @@ label input[type='checkbox'] { width: auto; min-height: auto; margin-right: var(
 .checkpoint--done { opacity: 0.6; }
 .checkpoint--later { opacity: 0.8; }
 
-[data-testid='dose-preview'] { border-left: 3px solid #888; padding-left: 0.75rem; }
+[data-testid='dose-preview'] { border-left: 3px solid var(--ink-soft); padding-left: 0.75rem; }
 [data-testid='observed-list'] blockquote {
   margin: 0.25rem 0 0.5rem 1rem;
-  border-left: 2px solid #ccc;
+  border-left: 2px solid var(--line-strong);
   padding-left: 0.5rem;
 }
 
