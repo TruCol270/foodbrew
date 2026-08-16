@@ -1,6 +1,6 @@
 import type {
   AuditEvent, Comparison, Enzyme, Evaluation, EvaluationSummary, Food, Formulation,
-  Proposal, Recipe, SelectedEnzyme, Substrate, SubstrateRow,
+  Proposal, Recipe, SelectedEnzyme, Substrate, SubstrateRow, SymptomDose, Trial, TrialSummary,
 } from './types'
 
 /** The API's error shape. A rejected formulation is normal traffic, not a crash. */
@@ -85,6 +85,22 @@ export const api = {
   rejectProposal: (id: string) => post<Proposal>(`/proposals/${id}/reject`),
 
   auditFeed: () => request<AuditEvent[]>('/audit'),
+
+  startTrial: (evaluationId: string) => post<Trial>(`/evaluations/${evaluationId}/trial`),
+  trial: (id: string) => request<Trial>(`/trials/${id}`),
+  activeTrials: () => request<TrialSummary[]>('/trials'),
+  trialsForEvaluation: (evaluationId: string) =>
+    request<TrialSummary[]>(`/evaluations/${evaluationId}/trials`),
+  setTrialStatus: (id: string, status: 'complete' | 'abandoned') =>
+    post<Trial>(`/trials/${id}/status`, { status }),
+
+  addBatch: (trialId: string, body: unknown) => post<Trial>(`/trials/${trialId}/batches`, body),
+  addObservation: (batchId: string, body: unknown) =>
+    post<Trial>(`/trial-batches/${batchId}/observations`, body),
+  addSymptomEntry: (batchId: string, body: unknown) =>
+    post<Trial>(`/trial-batches/${batchId}/symptom-entries`, body),
+  previewSymptom: (batchId: string, body: unknown) =>
+    post<SymptomDose>(`/trial-batches/${batchId}/symptom-preview`, body),
 
   reportUrl: (evaluationId: string) => `/api/v1/export/${evaluationId}.md`,
 }
