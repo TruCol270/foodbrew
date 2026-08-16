@@ -43,7 +43,11 @@ export function GiStrip({ lanes }: { lanes: GiLane[] }) {
                     r.before_deadline ? '' : 'cell--past-deadline',
                   ].join(' ')}
                 >
-                  {r.dormant ? 'dormant' : r.active ? 'active' : '—'}
+                  {r.dormant
+                    ? 'dormant'
+                    : r.active
+                      ? (r.before_deadline ? 'active' : 'active — past deadline')
+                      : '—'}
                 </td>
               ))}
             </tr>

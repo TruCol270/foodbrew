@@ -115,6 +115,7 @@ def _food_out(f: Food) -> dict:
         "contains_protease": f.contains_protease,
         "is_heat_processed": f.is_heat_processed,
         "structural": [str(s) for s in f.structural],
+        "allergens": list(f.allergens),
         "notes": f.notes,
         **{
             name: _t(getattr(f, name))
@@ -134,6 +135,7 @@ def _food_in(raw: Mapping) -> Food:
         contains_protease=raw["contains_protease"],
         is_heat_processed=raw["is_heat_processed"],
         structural=tuple(StructuralClass(s) for s in raw["structural"]),
+        allergens=tuple(raw.get("allergens", ())),
         notes=raw["notes"],
         **{
             name: _untracked(raw.get(name))
@@ -284,7 +286,8 @@ def context_from_snapshot(raw: str) -> EvalContext:
 class SnapshotChange:
     """One field that moved between two snapshots of the same formulation."""
 
-    #: "enzyme" | "food" | "substrate" | "formulation" | "gi_regions" | "latest_trial_ph"
+    #: "enzyme" | "food" | "substrate" | "formulation" | "gi_regions"
+    #: | "latest_trial_ph" | "field_added"
     kind: str
     record_id: str
     field: str
@@ -307,9 +310,21 @@ def _record_changes(kind: str, old: Mapping, new: Mapping) -> list[SnapshotChang
             continue
         for name in sorted(set(before) | set(after)):
             if before.get(name) != after.get(name):
-                changes.append(
-                    SnapshotChange(kind, record_id, name, before.get(name), after.get(name))
-                )
+                if name not in before:
+                    # Plan decision #3: a key present in the new payload and
+                    # absent from the old one is a catalogue upgrade (a field
+                    # added by a later engine version), not a founder edit —
+                    # the staleness banner must not conflate the two.
+                    changes.append(
+                        SnapshotChange(
+                            kind="field_added", record_id=record_id, field=name,
+                            before=None, after=after.get(name),
+                        )
+                    )
+                else:
+                    changes.append(
+                        SnapshotChange(kind, record_id, name, before.get(name), after.get(name))
+                    )
     return changes
 
 

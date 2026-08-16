@@ -13,6 +13,7 @@ import sqlite3
 from collections.abc import Sequence
 
 from foodbrew.engine import ValidationRejection
+from foodbrew.engine.allergens import parse as parse_allergens
 from foodbrew.engine.types import Food, StructuralClass, TruthLabel
 from foodbrew.store.ids import new_id
 from foodbrew.store.rowmap import food_from_row
@@ -72,10 +73,16 @@ def create_custom(
     typical_load_unit: str,
     contains_substrate_ids: Sequence[str],
     structural: Sequence[str],
+    allergens: Sequence[str] = (),
     contains_protease: bool,
     is_heat_processed: bool,
     notes: str,
 ) -> str:
+    try:
+        parse_allergens(allergens)
+    except ValueError as exc:
+        raise ValidationRejection(str(exc)) from exc
+
     if not (is_recipe_ingredient or is_trigger_food or is_application_food):
         raise ValidationRejection(
             "Give this food at least one role: recipe ingredient, trigger food, "
@@ -103,6 +110,7 @@ def create_custom(
         "contains_protease": int(contains_protease),
         "is_heat_processed": int(is_heat_processed),
         "structural_json": json.dumps(list(structural)),
+        "allergens_json": json.dumps(list(allergens)),
         "notes": notes,
         **_tracked_columns("ph", ph),
         **_tracked_columns("water_content_pct", water_content_pct),

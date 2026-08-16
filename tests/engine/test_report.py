@@ -71,7 +71,7 @@ def test_the_footer_itself_would_fail_a_substring_lint_and_passes_this_one():
 def test_every_required_section_is_present(rendered):
     text = rendered(fmt=Format.PREMIXED_WET, measured_ph=3.0, trigger_foods=("milk",))
     for heading in (
-        "## What was checked",
+        "## Product and formula identity",
         "## What the rules found",
         "## Dose per serving",
         "## Where each enzyme can work",
@@ -108,8 +108,8 @@ def test_the_process_sequence_marks_the_heat_step_and_the_addition_point(rendere
         process_steps=(ProcessStep(1, "warm", True), ProcessStep(2, "whisk", False)),
         enzyme_addition_index=2,
     )
-    assert "1. warm — involves heat" in text
-    assert "2. whisk — enzyme goes in here" in text
+    assert "| 1 | warm | yes | no |" in text
+    assert "| 2 | whisk | no | yes |" in text
 
 
 def test_a_stale_report_says_so_in_provenance(make_ctx):

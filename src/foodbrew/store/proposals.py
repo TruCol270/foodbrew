@@ -50,7 +50,10 @@ def create(
     source_citation: str,
 ) -> str:
     records.check_table(table_name)
-    if field not in records.TRACKED_FIELDS[table_name]:
+    if (
+        field not in records.TRACKED_FIELDS[table_name]
+        and records.structured_kind(table_name, field) is None
+    ):
         raise ValidationRejection(
             f"'{field}' does not carry a source, so there is nothing to confirm about it."
         )
@@ -64,7 +67,11 @@ def create(
             "value confirmed rather than entered."
         )
     # Parse now, so a bad value is refused at the inbox rather than at approval.
-    records.coerce(table_name, field, proposed_value)
+    if records.structured_kind(table_name, field) is not None:
+        # Stored as the canonical JSON text the writer will apply verbatim.
+        proposed_value = records.coerce_structured(table_name, field, proposed_value)
+    else:
+        records.coerce(table_name, field, proposed_value)  # existing behaviour
 
     proposal_id = new_id()
     conn.execute(
@@ -127,14 +134,22 @@ def approve(conn: sqlite3.Connection, proposal_id: str) -> Proposal:
     # after creation — only status does — so this read stays valid regardless
     # of who wins the race in _claim() below.
     _claim(conn, proposal_id, APPROVED)
-    records.set_confirmed(
-        conn,
-        proposal.table_name,
-        proposal.record_id,
-        proposal.field,
-        proposal.proposed_value,
-        proposal.source_citation,
-    )
+    if records.structured_kind(proposal.table_name, proposal.field) is not None:
+        records.update_structured(
+            conn, proposal.table_name, proposal.record_id, proposal.field,
+            proposal.proposed_value,
+        )
+        # There is no _status column to flip; the citation lives in the audit
+        # trail and in the proposal row, which stays as the record of who said so.
+    else:
+        records.set_confirmed(
+            conn,
+            proposal.table_name,
+            proposal.record_id,
+            proposal.field,
+            proposal.proposed_value,
+            proposal.source_citation,
+        )
     audit.record(
         conn, action="approve_proposal", entity=f"proposal:{proposal_id}",
         before={"status": PENDING}, after={"status": APPROVED},

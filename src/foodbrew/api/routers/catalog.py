@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query
 
 from foodbrew.api.deps import get_conn
 from foodbrew.api.schemas import CustomFoodIn, EnzymeOut, FoodOut, GIRegionOut, SubstrateOut
+from foodbrew.store import audit as audit_store
 from foodbrew.store import foods as foods_store
 from foodbrew.store.reference import load_catalog
 
@@ -17,7 +18,11 @@ router = APIRouter(tags=["catalog"])
 @router.get("/enzymes", response_model=list[EnzymeOut])
 def list_enzymes(conn: sqlite3.Connection = Depends(get_conn)):
     catalog = load_catalog(conn)
-    return [EnzymeOut.of(e) for e in sorted(catalog.enzymes.values(), key=lambda e: e.name)]
+    edits = audit_store.last_edited_for(conn, "enzyme")
+    return [
+        EnzymeOut.of(e).model_copy(update={"last_edited": edits.get(e.id)})
+        for e in sorted(catalog.enzymes.values(), key=lambda e: e.name)
+    ]
 
 
 @router.get("/substrates", response_model=list[SubstrateOut])
@@ -36,7 +41,11 @@ def list_foods(
     role: str | None = Query(default=None, description="recipe_ingredient | trigger | application"),
     conn: sqlite3.Connection = Depends(get_conn),
 ):
-    return [FoodOut.of(f) for f in foods_store.list_by_role(conn, role)]
+    edits = audit_store.last_edited_for(conn, "food")
+    return [
+        FoodOut.of(f).model_copy(update={"last_edited": edits.get(f.id)})
+        for f in foods_store.list_by_role(conn, role)
+    ]
 
 
 @router.post("/foods", response_model=FoodOut, status_code=201)

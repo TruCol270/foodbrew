@@ -16,6 +16,23 @@ def test_an_edit_is_stored_as_the_founder_s_own_value(client):
     assert field["source"] == "entered by founder"
 
 
+def test_an_edit_s_own_response_reports_its_own_last_edited(client):
+    """The record's own PUT/reset response must not lag behind the list
+    endpoints — a consumer reading the write's response body directly (rather
+    than reloading the list) still sees the truth."""
+    response = client.put(
+        "/api/v1/enzymes/lactase_fungal_acid",
+        json={"fields": {"ph_shelf_stable_min": 3.4}},
+    )
+    assert response.json()["last_edited"]
+
+    reset = client.post("/api/v1/enzymes/lactase_fungal_acid/reset")
+    assert reset.json()["last_edited"]
+
+    food_response = client.put("/api/v1/foods/milk", json={"fields": {"ph": 6.7}})
+    assert food_response.json()["last_edited"]
+
+
 def test_a_client_cannot_reach_a_status_column_through_the_editor(client):
     """Plan decision #16 — the allowlist is what stops this, not the schema."""
     # lactase_fungal_acid's seeded ph_min is already confirmed (KB Table B), so

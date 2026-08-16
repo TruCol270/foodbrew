@@ -15,11 +15,12 @@ proposal's TEXT value with, so the two writers cannot disagree about what
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from foodbrew.engine import ValidationRejection
+from foodbrew.engine import ValidationRejection, structural
 from foodbrew.engine.types import TruthLabel
 from foodbrew.seedload.loader import load_seed
 from foodbrew.store import audit
@@ -47,6 +48,52 @@ PLAIN_FIELDS: Mapping[str, Mapping[str, type]] = {
     },
     "food": {"notes": str, "category": str, "typical_load_unit": str},
 }
+
+#: JSON list columns over closed enums (plan decision #4). Separate from
+#: TRACKED_FIELDS because they carry no _status/_source pair — their provenance
+#: is the tier inside the value — and separate from PLAIN_FIELDS because a free
+#: string is not a legal value for either of them.
+STRUCTURED_FIELDS: Mapping[str, Mapping[str, str]] = {
+    "enzyme": {"degrades_structural_json": "enzyme_entries"},
+    "food": {"structural_json": "food_classes"},
+}
+
+
+def structured_kind(table: str, field: str) -> str | None:
+    return STRUCTURED_FIELDS.get(table, {}).get(field)
+
+
+def coerce_structured(table: str, field: str, raw) -> str:
+    """Validate through the engine and return the JSON text to store."""
+    kind = structured_kind(table, field)
+    if kind is None:
+        raise ValidationRejection(f"'{field}' is not a structured field on {table}.")
+    try:
+        if kind == "enzyme_entries":
+            return json.dumps(list(structural.parse_enzyme_entries(raw)))
+        return json.dumps(list(structural.parse_food_classes(raw)))
+    except structural.StructuralError as exc:
+        raise ValidationRejection(f"'{field}': {exc}") from exc
+
+
+def update_structured(
+    conn: sqlite3.Connection, table: str, record_id: str, field: str, raw
+) -> None:
+    """A founder edit to a structured field. Audited like every other edit."""
+    check_table(table)
+    payload = coerce_structured(table, field, raw)
+    before = conn.execute(
+        f"SELECT {field} FROM {table} WHERE id = ?", (record_id,)
+    ).fetchone()
+    if before is None:
+        raise ValidationRejection(f"No {table} '{record_id}'.")
+
+    conn.execute(f"UPDATE {table} SET {field} = ? WHERE id = ?", (payload, record_id))
+    audit.record(
+        conn, action="edit", entity=f"{table}:{record_id}",
+        before={field: before[field]}, after={field: payload},
+    )
+    conn.commit()
 
 
 def check_table(table: str) -> None:

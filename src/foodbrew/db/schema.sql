@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS food (
     contains_protease INTEGER NOT NULL DEFAULT 0,
     is_heat_processed INTEGER NOT NULL DEFAULT 0,
     structural_json TEXT NOT NULL DEFAULT '[]',
+    allergens_json TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT ''
 );
 

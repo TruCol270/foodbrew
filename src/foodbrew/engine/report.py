@@ -16,8 +16,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
+from foodbrew.engine.allergens import NOTHING_RECORDED, Declaration, declare
 from foodbrew.engine.flags import group_findings
 from foodbrew.engine.format_search import FORMAT_TITLES, FormatRecommendation
+from foodbrew.engine.formula import Formula, process_lines
+from foodbrew.engine.formula import build as build_formula
 from foodbrew.engine.observations import TEXTURE_SCALE_NOTE, ExportClass
 from foodbrew.engine.types import (
     DwellProfile,
@@ -140,6 +143,23 @@ class TrialReport:
 
 
 @dataclass(frozen=True, slots=True)
+class ReportBatch:
+    """One `trial_batch` as a batch record — the document reviewed first when a
+    batch misses spec, which is why every parameter it captured is printed."""
+
+    made_at: str
+    batch_size_g: float | None
+    measured_ph: float | None
+    ph_method: str
+    make_minutes: int | None
+    difficulty_score: int | None
+    enzyme_source_note: str
+    enzyme_addition_step: int | None
+    storage_mode: str
+    process_notes: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class ReportInput:
     """Everything the report needs, already frozen. The renderer derives the rest."""
 
@@ -157,6 +177,10 @@ class ReportInput:
     stale: bool = False
     #: None until the founder has run a trial against this evaluation (§6.6).
     trial: TrialReport | None = None
+    #: Identity of the recipe this formula belongs to, for the header block.
+    recipe_id: str = ""
+    #: Batch records from the trial, newest last. Empty until a batch is logged.
+    batches: tuple[ReportBatch, ...] = field(default_factory=tuple)
 
 
 def _tracked(value: Tracked, unit: str = "") -> str:
@@ -181,54 +205,171 @@ def _findings_section(title: str, blurb: str, findings: Sequence[RuleFinding]) -
     return lines
 
 
-def _inputs_section(data: ReportInput) -> list[str]:
+def _identity_block(data: ReportInput) -> list[str]:
+    """The header a specification sheet opens with: what this is, and which run."""
+    form = data.context.formulation
+    serving = "not set" if form.serving_size_g is None else f"{form.serving_size_g} g"
+    return [
+        "## Product and formula identity",
+        "",
+        "| Field | Value |",
+        "| --- | --- |",
+        f"| Product | {data.recipe_name} |",
+        f"| Recipe id | {data.recipe_id or 'not recorded'} |",
+        "| Formula basis | percent of total batch weight (sums to 100) |",
+        f"| Format | {FORMAT_TITLES.get(form.format, form.format.value)} |",
+        f"| Serving size | {serving} |",
+        f"| Declared use occasion | "
+        f"{form.dwell_profile.value if form.dwell_profile else 'not declared'} |",
+        f"| Measured pH | {_tracked(form.measured_ph)} |",
+        f"| Evaluation | {data.evaluation_id} |",
+        f"| Engine version | {data.engine_version} |",
+        "",
+    ]
+
+
+def _formula_section(formula: Formula) -> list[str]:
+    """Percent of total beside weights, in order of addition (decisions #6, #7)."""
+    if formula.is_empty:
+        return ["## Formula", "", "No ingredients are recorded for this recipe.", ""]
+
+    lines = [
+        "## Formula",
+        "",
+        "Percent of total batch weight, in the order the ingredients go in. The "
+        "percentages are the formula; the grams are one batch of it. Percent is "
+        "calculated from the weights, so the two cannot disagree.",
+        "",
+        "| # | Ingredient | % of total | Grams | pH | Water content | Allergens |",
+        "| ---: | --- | ---: | ---: | --- | --- | --- |",
+    ]
+    for position, line in enumerate(formula.lines, start=1):
+        percent = "—" if line.percent_of_total is None else f"{line.percent_of_total:g}"
+        allergens = line.allergen_text or "not recorded"
+        lines.append(
+            f"| {position} | {line.food_name} | {percent} | {line.amount_g:g} "
+            f"| {_tracked(line.ph)} | {_tracked(line.water_content_pct, '%')} | {allergens} |"
+        )
+
+    total_percent = (
+        "—" if formula.printed_percent_total is None else f"{formula.printed_percent_total:g}"
+    )
+    lines += [
+        f"| | **Total** | **{total_percent}** | **{formula.total_g:g}** | | | |",
+        "",
+    ]
+    if formula.printed_percent_total is not None and formula.printed_percent_total != 100:
+        lines += [
+            f"The printed percentages total {total_percent} rather than 100 because each "
+            "is rounded to two decimals. The grams are exact.",
+            "",
+        ]
+    return lines
+
+
+def _allergen_section(declaration: Declaration) -> list[str]:
+    lines = ["## Allergens", ""]
+    if declaration.is_empty:
+        lines += [
+            "No allergen is recorded for any ingredient in this recipe. That is a gap "
+            "in the ingredient records, not a statement that the product is free of "
+            "allergens.",
+            "",
+        ]
+    else:
+        lines += ["| Allergen | From |", "| --- | --- |"]
+        for entry in declaration.entries:
+            lines.append(f"| {entry.text} | {', '.join(entry.from_food_names)} |")
+        lines.append("")
+    if declaration.unrecorded_food_names:
+        lines += [
+            "Allergens are "
+            + NOTHING_RECORDED
+            + " for: "
+            + ", ".join(declaration.unrecorded_food_names)
+            + ". Fill these in before anyone relies on the declaration above.",
+            "",
+        ]
+    return lines
+
+
+def _process_section(data: ReportInput) -> list[str]:
+    form = data.context.formulation
+    steps = process_lines(form.process_steps, form.enzyme_addition_index)
+    if not steps:
+        return []
+    lines = [
+        "## Process",
+        "",
+        "| Step | Operation | Heat | Enzyme added here |",
+        "| ---: | --- | --- | --- |",
+    ]
+    for step in steps:
+        lines.append(
+            f"| {step.order} | {step.label} | {'yes' if step.is_heat else 'no'} "
+            f"| {'yes' if step.is_enzyme_addition_point else 'no'} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _targets_section(data: ReportInput) -> list[str]:
+    """What a specification sheet carries that this tool cannot measure.
+
+    Stating the absence is the convention: an incomplete spec says which
+    parameters are outstanding rather than omitting the rows (spec §12).
+    """
+    return [
+        "## Finished-product parameters",
+        "",
+        "| Parameter | Value | Basis |",
+        "| --- | --- | --- |",
+        f"| pH | {_tracked(data.context.formulation.measured_ph)} | measured, or "
+        "estimated from the lowest-pH wet ingredient |",
+        "| Water activity | not measured | needs a lab instrument this tool does not model |",
+        "| Viscosity | not measured | outside the rules this tool evaluates |",
+        "| Nutrition | not calculated | no nutrient data is held for these ingredients |",
+        "",
+    ]
+
+
+def _selected_foods_section(data: ReportInput) -> list[str]:
     ctx = data.context
     form = ctx.formulation
-    lines = ["## What was checked", ""]
-    serving = "not set" if form.serving_size_g is None else f"{form.serving_size_g} g"
-
-    lines += [
-        f"- **Recipe:** {data.recipe_name}",
-        f"- **Format:** {FORMAT_TITLES.get(form.format, form.format.value)}",
-        f"- **Serving size:** {serving}",
-        f"- **Measured pH:** {_tracked(form.measured_ph)}",
-        "- **Declared use occasion:** "
-        + (form.dwell_profile.value if form.dwell_profile else "not declared"),
-        "",
-        "### Recipe",
-        "",
-        "| Ingredient | Grams | pH | Water content |",
-        "| --- | ---: | --- | --- |",
-    ]
-    for ingredient in form.recipe:
-        food = ctx.foods.get(ingredient.food_id)
-        name = food.name if food else ingredient.food_id
-        ph = _tracked(food.ph) if food else "not recorded"
-        water = _tracked(food.water_content_pct, "%") if food else "not recorded"
-        lines.append(f"| {name} | {ingredient.amount_g} | {ph} | {water} |")
-    lines.append("")
-
+    lines: list[str] = []
     for title, ids in (
         ("Trigger foods this is meant to cover", form.target_trigger_food_ids),
         ("Foods it will be poured on", form.application_food_ids),
     ):
-        names = [
-            ctx.foods[i].name if i in ctx.foods else i for i in ids
-        ]
+        names = [ctx.foods[i].name if i in ctx.foods else i for i in ids]
         lines += [f"### {title}", "", ", ".join(names) if names else "none selected", ""]
-
-    if form.process_steps:
-        lines += ["### How it is made", ""]
-        for step in form.process_steps:
-            marks = []
-            if step.is_heat:
-                marks.append("involves heat")
-            if form.enzyme_addition_index == step.order:
-                marks.append("enzyme goes in here")
-            suffix = f" — {', '.join(marks)}" if marks else ""
-            lines.append(f"{step.order}. {step.label}{suffix}")
-        lines.append("")
     return lines
+
+
+def _inputs_section(data: ReportInput) -> list[str]:
+    """Spec §10 screen 8, in the shape a bench sheet and a spec sheet use."""
+    formula = build_formula(
+        data.context.formulation.recipe,
+        data.context.foods,
+        allergen_text_for=_allergen_text,
+    )
+    declaration = declare(
+        [i.food_id for i in data.context.formulation.recipe], data.context.foods
+    )
+    return (
+        _identity_block(data)
+        + _formula_section(formula)
+        + _allergen_section(declaration)
+        + _process_section(data)
+        + _targets_section(data)
+        + _selected_foods_section(data)
+    )
+
+
+def _allergen_text(food) -> str:
+    from foodbrew.engine.allergens import ALLERGEN_TEXT, Allergen
+
+    return ", ".join(ALLERGEN_TEXT[Allergen(a)] for a in getattr(food, "allergens", ()) or ())
 
 
 def _dose_section(data: ReportInput) -> list[str]:
@@ -474,6 +615,48 @@ def _observed_section(data: ReportInput) -> list[str]:
     return lines
 
 
+def _batch_record_section(data: ReportInput) -> list[str]:
+    """The batch record. First document reviewed when a batch misses spec, so it
+    prints every parameter the trial captured rather than summarising them."""
+    if not data.batches:
+        return []
+    lines = [
+        "## Batch records",
+        "",
+        "What was actually made, as it was made. Blank cells are parameters that "
+        "were not recorded for that batch.",
+        "",
+        "| Made | Size | pH (method) | Minutes | Difficulty | Enzyme added after step "
+        "| Enzyme source | Storage |",
+        "| --- | ---: | --- | ---: | ---: | ---: | --- | --- |",
+    ]
+    for batch in data.batches:
+        ph = (
+            "not measured"
+            if batch.measured_ph is None
+            else f"{batch.measured_ph:g} ({batch.ph_method})"
+        )
+        lines.append(
+            f"| {batch.made_at[:16].replace('T', ' ')} "
+            f"| {'' if batch.batch_size_g is None else f'{batch.batch_size_g:g} g'} "
+            f"| {ph} "
+            f"| {'' if batch.make_minutes is None else batch.make_minutes} "
+            f"| {'' if batch.difficulty_score is None else f'{batch.difficulty_score} of 5'} "
+            f"| {'' if batch.enzyme_addition_step is None else batch.enzyme_addition_step} "
+            f"| {batch.enzyme_source_note or 'not recorded'} "
+            f"| {batch.storage_mode} |"
+        )
+    lines.append("")
+    for batch in data.batches:
+        if batch.process_notes:
+            lines += [
+                f"**Notes on the batch made {batch.made_at[:16].replace('T', ' ')}:**",
+                "",
+            ]
+            lines += _quote(batch.process_notes)
+    return lines
+
+
 def _provenance_section(data: ReportInput) -> list[str]:
     lines = [
         "## Provenance",
@@ -528,6 +711,7 @@ def render_markdown(data: ReportInput) -> str:
     lines += _format_section(data)
     lines += _suggestions_section(data)
     lines += _observed_section(data)
+    lines += _batch_record_section(data)
     lines += _open_questions_section(data)
     lines += _provenance_section(data)
     lines += ["---", "", DISCLAIMER, ""]

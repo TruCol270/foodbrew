@@ -11,7 +11,7 @@
     {"id": "fat", "name": "Dietary fat", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Lingual, gastric and pancreatic lipase already cover most fat digestion."},
     {"id": "sucrose", "name": "Sucrose", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": ""},
     {"id": "starch", "name": "Starch", "native_human_enzyme": true, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": ""},
-    {"id": "fiber", "name": "Insoluble fiber", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": ""},
-    {"id": "pectin", "name": "Pectin", "native_human_enzyme": false, "is_prebiotic": true, "no_commercial_enzyme": false, "notes": ""}
+    {"id": "fiber", "name": "Insoluble fiber", "native_human_enzyme": false, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Not flagged prebiotic: §9.2 scopes R9 to GOS and the two fructan classes."},
+    {"id": "pectin", "name": "Pectin", "native_human_enzyme": false, "is_prebiotic": false, "no_commercial_enzyme": false, "notes": "Not flagged prebiotic: §9.2 scopes R9 to GOS and the two fructan classes."}
   ]
 }

@@ -78,6 +78,8 @@ class EnzymeOut(BaseModel):
     dose_max: TrackedOut
     dose_evidence_threshold: TrackedOut
     is_gras: TrackedOut
+    #: ISO-8601 of the newest founder edit, or None if this record is untouched.
+    last_edited: str | None = None
 
     @classmethod
     def of(cls, e: Enzyme) -> EnzymeOut:
@@ -97,7 +99,7 @@ class EnzymeOut(BaseModel):
                 name: getattr(e, name)
                 for name in cls.model_fields
                 if name not in tracked_fields
-                and name not in {"aliases", "deadline", "degrades_structural"}
+                and name not in {"aliases", "deadline", "degrades_structural", "last_edited"}
             },
             **tracked_fields,
         )
@@ -115,10 +117,13 @@ class FoodOut(BaseModel):
     contains_protease: bool
     is_heat_processed: bool
     structural: list[str]
+    allergens: list[str]
     notes: str
     ph: TrackedOut
     water_content_pct: TrackedOut
     typical_load_value: TrackedOut
+    #: ISO-8601 of the newest founder edit, or None if this record is untouched.
+    last_edited: str | None = None
 
     @classmethod
     def of(cls, f: Food) -> FoodOut:
@@ -132,6 +137,7 @@ class FoodOut(BaseModel):
             contains_protease=f.contains_protease,
             is_heat_processed=f.is_heat_processed,
             structural=[str(s) for s in f.structural],
+            allergens=list(f.allergens),
             notes=f.notes,
             ph=TrackedOut.of(f.ph),
             water_content_pct=TrackedOut.of(f.water_content_pct),
@@ -153,6 +159,7 @@ class CustomFoodIn(BaseModel):
     typical_load_unit: str = ""
     contains_substrate_ids: list[str] = Field(default_factory=list)
     structural: list[str] = Field(default_factory=list)
+    allergens: list[str] = Field(default_factory=list)
     contains_protease: bool = False
     is_heat_processed: bool = False
     notes: str = ""
@@ -367,6 +374,13 @@ class RecordEditIn(BaseModel):
     client reaching a `_status` column through this door (plan decision #16)."""
 
     fields: dict[str, Any] = Field(default_factory=dict)
+
+
+class StructuredEditIn(BaseModel):
+    """A structured catalogue field. `value` is a list, checked server-side
+    against the closed enums (plan decision #4); no truth label is accepted."""
+
+    value: list[dict] | list[str]
 
 
 class ProposalIn(BaseModel):
@@ -606,3 +620,74 @@ class ObservedEnvelopeOut(BaseModel):
     trial_id: str | None
     profiles: dict[str, ObservedProfileOut]
     scale_note: str
+
+
+class FormulaLineOut(BaseModel):
+    position: int
+    food_id: str
+    food_name: str
+    amount_g: float
+    percent_of_total: float | None
+    ph: TrackedOut
+    water_content_pct: TrackedOut
+    allergens: list[str]
+
+
+class FormulaOut(BaseModel):
+    lines: list[FormulaLineOut]
+    total_g: float
+    printed_percent_total: float | None
+
+
+class ProcessLineOut(BaseModel):
+    order: int
+    label: str
+    is_heat: bool
+    is_enzyme_addition_point: bool
+
+
+class AllergenEntryOut(BaseModel):
+    allergen: str
+    text: str
+    from_food_names: list[str]
+
+
+class AllergenDeclarationOut(BaseModel):
+    entries: list[AllergenEntryOut]
+    unrecorded_food_names: list[str]
+
+
+class BatchRecordOut(BaseModel):
+    made_at: str
+    batch_size_g: float | None
+    measured_ph: float | None
+    ph_method: str
+    make_minutes: int | None
+    difficulty_score: int | None
+    enzyme_source_note: str
+    enzyme_addition_step: int | None
+    storage_mode: str
+    process_notes: str
+
+
+class ReportOut(BaseModel):
+    """Spec §10 screen 8 as structured data — the printable screen renders this,
+    and `GET /export/{id}.md` renders the same assembly (plan decision #8)."""
+
+    evaluation_id: str
+    recipe_id: str
+    recipe_name: str
+    created_at: str
+    engine_version: str
+    headline: str
+    stale: bool
+    formula: FormulaOut
+    process: list[ProcessLineOut]
+    allergens: AllergenDeclarationOut
+    batches: list[BatchRecordOut]
+    serving_size_g: float | None
+    measured_ph: TrackedOut
+    dwell_profile: str | None
+    format: str
+    trigger_food_names: list[str]
+    application_food_names: list[str]

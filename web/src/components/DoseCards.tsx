@@ -36,6 +36,17 @@ export function DoseCards({ cards }: { cards: DoseCard[] }) {
               {card.above_benchmark_max && ' — above the benchmark range; it works, but it is an expensive way to solve it'}
             </dd>
           </dl>
+          {card.ratio !== null && (
+            <div className="meter" data-testid={`meter-${card.enzyme_id}`}>
+              <div
+                className={`meter__fill meter__fill--${card.meets_threshold ? 'over' : 'under'}`}
+                style={{ width: `${Math.min(100, Math.round(card.ratio * 100))}%` }}
+              />
+              <span className="meter__label">
+                {card.meets_threshold ? 'clears the evidence threshold' : 'below the evidence threshold'}
+              </span>
+            </div>
+          )}
         </article>
       ))}
     </section>

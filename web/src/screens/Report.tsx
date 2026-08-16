@@ -2,25 +2,36 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { api } from '../api/client'
+import { AllergenDeclarationPanel } from '../components/AllergenDeclaration'
+import { BatchRecords } from '../components/BatchRecords'
 import { DoseCards } from '../components/DoseCards'
 import { EnvelopePanel } from '../components/EnvelopePanel'
 import { FindingGroups } from '../components/FindingGroups'
+import { FinishedProductParameters } from '../components/FinishedProductParameters'
 import { FormatRecommendationPanel } from '../components/FormatRecommendation'
+import { FormulaTable } from '../components/FormulaTable'
 import { GiStrip } from '../components/GiStrip'
 import { ObservedList } from '../components/ObservedList'
+import { TruthValue } from '../components/TruthValue'
 import { HeadlineBadge } from '../components/VerdictBadge'
-import type { Evaluation, Trial as TrialType } from '../api/types'
+import type { Evaluation, Report as ReportType, Trial as TrialType } from '../api/types'
 
 /** Spec §10 screen 8. The footer disclaimer comes from the layout and prints with it. */
 export default function Report() {
   const { evaluationId } = useParams()
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [trial, setTrial] = useState<TrialType | null>(null)
+  const [report, setReport] = useState<ReportType | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!evaluationId) return
     api.evaluation(evaluationId).then(setEvaluation).catch((e) => setError(e.message))
+  }, [evaluationId])
+
+  useEffect(() => {
+    if (!evaluationId) return
+    api.report(evaluationId).then(setReport).catch((e) => setError(e.message))
   }, [evaluationId])
 
   useEffect(() => {
@@ -51,6 +62,30 @@ export default function Report() {
         on engine {evaluation.engine_version}.
         {evaluation.stale && ' A record it used has changed since; re-run before relying on it.'}
       </p>
+
+      {report && (
+        <>
+          <section data-testid="identity">
+            <h3>Product and formula identity</h3>
+            <table>
+              <tbody>
+                <tr><th scope="row">Product</th><td>{report.recipe_name}</td></tr>
+                <tr><th scope="row">Recipe id</th><td>{report.recipe_id || 'not recorded'}</td></tr>
+                <tr><th scope="row">Format</th><td>{report.format}</td></tr>
+                <tr><th scope="row">Serving size</th>
+                    <td>{report.serving_size_g === null ? 'not set' : `${report.serving_size_g} g`}</td></tr>
+                <tr><th scope="row">Declared occasion</th>
+                    <td>{report.dwell_profile ?? 'not declared'}</td></tr>
+                <tr><th scope="row">Measured pH</th>
+                    <td><TruthValue tracked={report.measured_ph} /></td></tr>
+              </tbody>
+            </table>
+          </section>
+          <FormulaTable formula={report.formula} process={report.process} />
+          <AllergenDeclarationPanel declaration={report.allergens} />
+          <FinishedProductParameters measuredPh={report.measured_ph} />
+        </>
+      )}
 
       <FindingGroups
         blockers={evaluation.blockers}
@@ -83,6 +118,8 @@ export default function Report() {
           </>
         )}
       </section>
+
+      {report && <BatchRecords batches={report.batches} />}
 
       <section>
         <h3>Open questions</h3>

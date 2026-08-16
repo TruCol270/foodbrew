@@ -118,6 +118,8 @@ test('the report prints and offers the markdown', async ({ page }) => {
   await page.getByRole('link', { name: 'Open the printable report' }).click()
 
   await expect(page.getByTestId('observed')).toContainText('No trial has been recorded')
+  await expect(page.getByTestId('finished-product-parameters')).toContainText('Water activity')
+  await expect(page.getByTestId('finished-product-parameters')).toContainText('not measured')
   await expect(page.getByTestId('download-markdown')).toBeVisible()
   await expect(page.locator('footer')).toContainText(
     'Not a safety, efficacy, or regulatory determination.',

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from foodbrew.engine.allergens import parse as parse_allergens
 from foodbrew.engine.types import (
     Deadline,
     Enzyme,
@@ -158,6 +159,10 @@ def load_seed(seed_dir: Path | None = None) -> Seed:
             structural = tuple(StructuralClass(s) for s in r.get("structural", ()))
         except ValueError as exc:
             raise SeedError(f"{fid}: bad structural class in {r.get('structural')}") from exc
+        try:
+            allergens = tuple(a.value for a in parse_allergens(r.get("allergens", ())))
+        except ValueError as exc:
+            raise SeedError(f"{fid}: {exc}") from exc
         foods[fid] = Food(
             id=fid,
             name=r["name"],
@@ -173,6 +178,7 @@ def load_seed(seed_dir: Path | None = None) -> Seed:
             contains_protease=r.get("contains_protease", False),
             is_heat_processed=r.get("is_heat_processed", False),
             structural=structural,
+            allergens=allergens,
             notes=r.get("notes", ""),
         )
 

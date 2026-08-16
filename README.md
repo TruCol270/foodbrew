@@ -25,6 +25,31 @@ From a verdict screen you can:
 - **Print the report** or download the same content as Markdown from
   `/api/v1/export/<evaluation id>.md`.
 
+## The report
+
+The report is written in the shape a food scientist expects to receive:
+
+- **Product and formula identity** — what this is, which recipe, which evaluation,
+  which engine version.
+- **Formula** — percent of total batch weight, in the order the ingredients go in,
+  with the grams for one batch beside each line and a total row. The percentages
+  are the formula; the grams are one instance of it. Percent is calculated from
+  the weights, so the two can never disagree.
+- **Allergens** — a declaration built from the ingredient records, naming the
+  ingredients whose allergens are *not recorded* rather than implying they carry
+  none.
+- **Process** — the step sequence, which steps involve heat, and where the enzyme
+  goes in.
+- **Finished-product parameters** — pH, plus water activity, viscosity and
+  nutrition listed as *not measured*. A spec sheet that omits them looks complete;
+  one that names them tells the truth about what still needs a lab.
+- **Batch records** — every batch you logged, with the parameters as you made it.
+- Findings, doses, GI windows, the occasion envelope with observed columns, open
+  questions, and provenance.
+
+The printable page and the Markdown download are two renderings of one assembly,
+so they cannot drift.
+
 ## The database screen
 
 `/database` edits any enzyme or food field. Anything you type is stored as your
@@ -36,6 +61,15 @@ Editing a record never changes an evaluation that has already run. Those runs
 show a banner naming what changed and offering a re-run. "Reset to the shipped
 values" restores one record from `seed/*.json`; the reset on the whole
 reference set discards every edit to every enzyme and food.
+
+Every field shows its value, its unit, its truth label, its source, and when you
+last edited it. A record you have never touched says "shipped value" rather than
+inventing a date.
+
+Two fields are structured rather than numeric — what an enzyme degrades, and what
+a food's texture depends on. Both are edited from dropdowns over a closed
+vocabulary. Moving an entry off *not established* is how a supplier's answer
+turns one of R15's "cannot assess" verdicts into a real one.
 
 ## The kitchen trial
 
@@ -68,7 +102,7 @@ banner until you re-run it.
 
 ## Checks
 
-    make test    # pytest: engine, store, API, contracts
+    make test    # pytest: engine, store, API, contracts, migrations
     make lint    # ruff
     make e2e     # Playwright, against the built app
     make report EVAL=<evaluation id>   # the markdown export, from a running server
