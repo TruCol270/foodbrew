@@ -20,6 +20,7 @@ from foodbrew.engine.observations import (
     observed_envelope,
 )
 from foodbrew.engine.report import (
+    ReportBatch,
     ReportInput,
     ReportObservation,
     ReportSuggestion,
@@ -138,35 +139,63 @@ def _score_for(trial, cell) -> int:
     return 1
 
 
-@router.get("/export/{evaluation_id}.md", response_class=PlainTextResponse)
-def export_markdown(evaluation_id: str, conn: sqlite3.Connection = Depends(get_conn)):
+def report_input(conn: sqlite3.Connection, evaluation_id: str) -> ReportInput | None:
+    """Assemble everything both renderers consume. The single source of the
+    report's content (plan decision #8) — the markdown export and the printable
+    screen are two renderings of this one value, never two assemblies."""
     stored = evaluations_store.get(conn, evaluation_id)
     if stored is None:
-        raise HTTPException(status_code=404, detail=f"No evaluation '{evaluation_id}'.")
+        return None
 
     ctx = context_from_snapshot(stored.input_snapshot_json)
     stale, _changes = evaluations_store.freshness(conn, stored)
-
     recipe_id = formulations_store.recipe_id_for(conn, stored.formulation_id)
     recipe = recipes_store.get(conn, recipe_id) if recipe_id else None
+    trial = _trial_report(conn, evaluation_id)
 
-    body = render_markdown(
-        ReportInput(
-            evaluation_id=stored.id,
-            created_at=stored.created_at,
-            engine_version=stored.engine_version,
-            recipe_name=recipe.name if recipe else "Untitled recipe",
-            headline=stored.display,
-            context=ctx,
-            findings=stored.findings,
-            envelope=stored.envelope,
-            recommendation=recommend_format(ctx),
-            suggestions=tuple(
-                ReportSuggestion(s.suggestion_type, s.description, s.raised_by)
-                for s in stored.suggestions
-            ),
-            stale=stale,
-            trial=_trial_report(conn, evaluation_id),
-        )
+    return ReportInput(
+        evaluation_id=stored.id,
+        created_at=stored.created_at,
+        engine_version=stored.engine_version,
+        recipe_name=recipe.name if recipe else "Untitled recipe",
+        recipe_id=recipe_id or "",
+        headline=stored.display,
+        context=ctx,
+        findings=stored.findings,
+        envelope=stored.envelope,
+        recommendation=recommend_format(ctx),
+        suggestions=tuple(
+            ReportSuggestion(s.suggestion_type, s.description, s.raised_by)
+            for s in stored.suggestions
+        ),
+        stale=stale,
+        trial=trial,
+        batches=_batch_records(conn, evaluation_id),
     )
-    return PlainTextResponse(body, media_type="text/markdown; charset=utf-8")
+
+
+def _batch_records(conn: sqlite3.Connection, evaluation_id: str) -> tuple[ReportBatch, ...]:
+    """Every batch of every trial on this evaluation, oldest first."""
+    records: list[ReportBatch] = []
+    for trial in trials_store.list_for_evaluation(conn, evaluation_id):
+        for batch in trial.batches:
+            records.append(
+                ReportBatch(
+                    made_at=batch.made_at, batch_size_g=batch.batch_size_g,
+                    measured_ph=batch.measured_ph, ph_method=batch.ph_method,
+                    make_minutes=batch.make_minutes,
+                    difficulty_score=batch.difficulty_score,
+                    enzyme_source_note=batch.enzyme_source_note,
+                    enzyme_addition_step=batch.enzyme_addition_step,
+                    storage_mode=batch.storage_mode, process_notes=batch.process_notes,
+                )
+            )
+    return tuple(sorted(records, key=lambda r: r.made_at))
+
+
+@router.get("/export/{evaluation_id}.md", response_class=PlainTextResponse)
+def export_markdown(evaluation_id: str, conn: sqlite3.Connection = Depends(get_conn)):
+    data = report_input(conn, evaluation_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"No evaluation '{evaluation_id}'.")
+    return PlainTextResponse(render_markdown(data), media_type="text/markdown; charset=utf-8")
