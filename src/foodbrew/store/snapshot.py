@@ -286,7 +286,8 @@ def context_from_snapshot(raw: str) -> EvalContext:
 class SnapshotChange:
     """One field that moved between two snapshots of the same formulation."""
 
-    #: "enzyme" | "food" | "substrate" | "formulation" | "gi_regions" | "latest_trial_ph"
+    #: "enzyme" | "food" | "substrate" | "formulation" | "gi_regions"
+    #: | "latest_trial_ph" | "field_added"
     kind: str
     record_id: str
     field: str

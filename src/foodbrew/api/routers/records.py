@@ -28,7 +28,9 @@ router = APIRouter(tags=["database"])
 
 
 def _enzyme(conn: sqlite3.Connection, enzyme_id: str) -> EnzymeOut:
-    return EnzymeOut.of(load_catalog(conn).enzymes[enzyme_id])
+    last_edited = audit_store.last_edited_for(conn, "enzyme").get(enzyme_id)
+    out = EnzymeOut.of(load_catalog(conn).enzymes[enzyme_id])
+    return out.model_copy(update={"last_edited": last_edited})
 
 
 @router.put("/enzymes/{enzyme_id}", response_model=EnzymeOut)
@@ -54,18 +56,24 @@ def edit_enzyme_structured(
     return {"ok": True}
 
 
+def _food(conn: sqlite3.Connection, food_id: str) -> FoodOut:
+    last_edited = audit_store.last_edited_for(conn, "food").get(food_id)
+    out = FoodOut.of(foods_store.get(conn, food_id))
+    return out.model_copy(update={"last_edited": last_edited})
+
+
 @router.put("/foods/{food_id}", response_model=FoodOut)
 def update_food(
     food_id: str, payload: RecordEditIn, conn: sqlite3.Connection = Depends(get_conn)
 ):
     records_store.update(conn, "food", food_id, payload.fields)
-    return FoodOut.of(foods_store.get(conn, food_id))
+    return _food(conn, food_id)
 
 
 @router.post("/foods/{food_id}/reset", response_model=FoodOut)
 def reset_food(food_id: str, conn: sqlite3.Connection = Depends(get_conn)):
     records_store.reset_record(conn, "food", food_id)
-    return FoodOut.of(foods_store.get(conn, food_id))
+    return _food(conn, food_id)
 
 
 @router.put("/foods/{food_id}/structured/{field}", response_model=dict)

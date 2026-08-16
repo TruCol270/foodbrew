@@ -62,13 +62,23 @@ def last_edited_for(conn: sqlite3.Connection, table: str) -> dict[str, str]:
     entity='reference' and therefore does NOT stamp individual records — a
     record with no row here has never been edited, and the editor says
     "shipped value" rather than inventing a date.
+
+    A record edited *before* the most recent global reset is, after that
+    reset, back at its shipped value too — the reset silently overwrote it
+    the same way `reset_all` overwrites every other row. Per-record
+    timestamps at or before that reset are therefore excluded, or a founder
+    who resets the whole catalogue would still be told her old edit stands.
     """
     prefix = f"{table}:"
     return {
         row["entity"][len(prefix):]: row["last_edited"]
         for row in conn.execute(
             "SELECT entity, MAX(timestamp) AS last_edited FROM audit_event"
-            " WHERE entity LIKE ? GROUP BY entity",
+            " WHERE entity LIKE ?"
+            " AND timestamp > COALESCE("
+            "   (SELECT MAX(timestamp) FROM audit_event WHERE entity = 'reference'), ''"
+            " )"
+            " GROUP BY entity",
             (prefix + "%",),
         )
     }

@@ -34,6 +34,15 @@ def test_a_record_edited_then_reset_keeps_its_history(conn):
     assert audit.last_edited_for(conn, "enzyme")["lactase_fungal_acid"]
 
 
+def test_a_global_reset_erases_an_earlier_edits_last_edited_too(conn):
+    """A record touched before a *global* reset is back at its shipped value
+    after it, same as every other row `reset_all` overwrites — it must not
+    go on claiming the founder's pre-reset edit still stands."""
+    records.update(conn, "enzyme", "lactase_fungal_acid", {"ph_shelf_stable_min": 3.2})
+    records.reset_all(conn)
+    assert audit.last_edited_for(conn, "enzyme").get("lactase_fungal_acid") is None
+
+
 def test_an_added_field_is_reported_as_an_upgrade_not_an_edit(conn, vinaigrette_rows):
     import json
 
