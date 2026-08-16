@@ -199,6 +199,10 @@ class Food:
     contains_protease: bool = False
     is_heat_processed: bool = False
     structural: tuple[StructuralClass, ...] = ()
+    #: Spec §5.1 / plan decision #2. Inert: no rule reads this, exactly like
+    #: `notes`. It travels with the evaluation so the report can declare what is
+    #: in the jar without consulting a catalogue that may have moved since.
+    allergens: tuple[str, ...] = ()
     notes: str = ""
 
 

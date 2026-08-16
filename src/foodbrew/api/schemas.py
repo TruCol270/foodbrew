@@ -115,6 +115,7 @@ class FoodOut(BaseModel):
     contains_protease: bool
     is_heat_processed: bool
     structural: list[str]
+    allergens: list[str]
     notes: str
     ph: TrackedOut
     water_content_pct: TrackedOut
@@ -132,6 +133,7 @@ class FoodOut(BaseModel):
             contains_protease=f.contains_protease,
             is_heat_processed=f.is_heat_processed,
             structural=[str(s) for s in f.structural],
+            allergens=list(f.allergens),
             notes=f.notes,
             ph=TrackedOut.of(f.ph),
             water_content_pct=TrackedOut.of(f.water_content_pct),
@@ -153,6 +155,7 @@ class CustomFoodIn(BaseModel):
     typical_load_unit: str = ""
     contains_substrate_ids: list[str] = Field(default_factory=list)
     structural: list[str] = Field(default_factory=list)
+    allergens: list[str] = Field(default_factory=list)
     contains_protease: bool = False
     is_heat_processed: bool = False
     notes: str = ""

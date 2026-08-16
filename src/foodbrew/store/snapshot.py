@@ -115,6 +115,7 @@ def _food_out(f: Food) -> dict:
         "contains_protease": f.contains_protease,
         "is_heat_processed": f.is_heat_processed,
         "structural": [str(s) for s in f.structural],
+        "allergens": list(f.allergens),
         "notes": f.notes,
         **{
             name: _t(getattr(f, name))
@@ -134,6 +135,7 @@ def _food_in(raw: Mapping) -> Food:
         contains_protease=raw["contains_protease"],
         is_heat_processed=raw["is_heat_processed"],
         structural=tuple(StructuralClass(s) for s in raw["structural"]),
+        allergens=tuple(raw.get("allergens", ())),
         notes=raw["notes"],
         **{
             name: _untracked(raw.get(name))

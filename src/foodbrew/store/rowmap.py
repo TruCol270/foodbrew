@@ -115,6 +115,7 @@ def food_from_row(row: sqlite3.Row) -> Food:
         contains_protease=bool(row["contains_protease"]),
         is_heat_processed=bool(row["is_heat_processed"]),
         structural=tuple(StructuralClass(s) for s in json.loads(row["structural_json"])),
+        allergens=tuple(json.loads(row["allergens_json"])),
         notes=row["notes"],
         **{name: tracked(row, name) for name in FOOD_TRACKED},
     )
@@ -176,6 +177,7 @@ def food_to_row(f: Food) -> dict:
         "contains_protease": int(f.contains_protease),
         "is_heat_processed": int(f.is_heat_processed),
         "structural_json": json.dumps([s.value for s in f.structural]),
+        "allergens_json": json.dumps(list(f.allergens)),
         "notes": f.notes,
     }
     for prefix in FOOD_TRACKED:
