@@ -170,23 +170,38 @@ export default function Database() {
 
       <fieldset>
         <legend>Enzymes</legend>
+        {/* One button per record, each carrying its own last-edited status —
+            answerable without stepping through the dropdown below, and a
+            specific record (e.g. inulinase, whose structural tier §15 item 4
+            asks a supplier about) can be reached directly. */}
+        <ul className="record-list">
+          {enzymes.map((e) => (
+            <li key={e.id}>
+              <button type="button" data-testid={`record-${e.id}`}
+                      onClick={() => setEnzymeId(e.id)}>
+                {e.name}
+              </button>{' '}
+              <span className="blurb" data-testid={`last-edited-${e.id}`}>
+                {e.last_edited
+                  ? `You last edited this on ${e.last_edited.slice(0, 10)}`
+                  : 'Shipped value — you have not edited this record'}
+              </span>
+            </li>
+          ))}
+        </ul>
         <select value={enzymeId} data-testid="enzyme-picker"
                 onChange={(e) => setEnzymeId(e.target.value)}>
           {enzymes.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         {enzyme && (
           <>
-            <p className="blurb" data-testid={`last-edited-${enzyme.id}`}>
-              {enzyme.last_edited
-                ? `You last edited this on ${enzyme.last_edited.slice(0, 10)}`
-                : 'Shipped value — you have not edited this record'}
-            </p>
             {ENZYME_FIELDS.map(({ field, label, unit }) => (
               <FieldRow key={field} field={field} label={label} unit={unit}
                         tracked={enzyme[field]}
                         onSave={(value) => run(() => api.updateEnzyme(enzyme.id, { [field]: value }))} />
             ))}
             <StructuralEditor
+              key={enzyme.id}
               entries={enzyme.degrades_structural}
               onSave={async (value) => {
                 await run(() => api.updateStructured('enzymes', enzyme.id, 'degrades_structural_json', value))
