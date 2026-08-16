@@ -1,30 +1,134 @@
 :root {
+  /* Verdict palette — unchanged hues, now named as roles (§6.4). */
   --red: #b3261e; --amber: #9a6700; --gray: #5c5f66; --green: #1a7f37;
-  --line: #d7d9dd; --bg: #ffffff; --muted: #f5f6f7;
+  --red-bg: #fdf0ef; --amber-bg: #fdf6e6; --gray-bg: #f2f3f4; --green-bg: #eef8f1;
+
+  --bg: #ffffff; --surface: #ffffff; --muted: #f5f6f7;
+  --ink: #1b1c1e; --ink-soft: #5c5f66; --line: #d7d9dd; --line-strong: #b9bcc2;
+  --accent: #17527a; --accent-bg: #eaf2f8;
+
+  /* 4px spacing scale. Every margin and pad in this file uses one of these. */
+  --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem;
+  --s5: 1.5rem; --s6: 2rem; --s7: 3rem;
+
+  /* 1.25 type scale off a 1rem body. */
+  --t-xs: 0.78rem; --t-sm: 0.875rem; --t-base: 1rem;
+  --t-lg: 1.25rem; --t-xl: 1.563rem; --t-2xl: 1.953rem;
+
+  --radius: 6px; --radius-sm: 4px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 2px 8px rgb(0 0 0 / 0.04);
+  --focus: 0 0 0 3px var(--accent-bg), 0 0 0 5px var(--accent);
+  --touch: 44px;   /* minimum interactive target — the trial screens are used on a phone */
+
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color-scheme: light dark;
 }
-body { margin: 0; color: #1b1c1e; background: var(--bg); }
-.app { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181a; --surface: #1d2022; --muted: #24282b;
+    --ink: #e9eaec; --ink-soft: #a8adb4; --line: #33383d; --line-strong: #474d54;
+    --red: #f2837b; --amber: #e0b341; --gray: #a8adb4; --green: #6cc48a;
+    --red-bg: #2a1917; --amber-bg: #29220f; --gray-bg: #24282b; --green-bg: #14251a;
+    --accent: #7db8e0; --accent-bg: #16303f;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+  }
+}
+
+body { margin: 0; color: var(--ink); background: var(--bg); }
+.app { max-width: 64rem; margin: 0 auto; padding: var(--s4); }
 header { display: flex; gap: 1rem; align-items: baseline; border-bottom: 1px solid var(--line); }
 .brand { font-weight: 700; text-decoration: none; color: inherit; }
 footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
          color: var(--gray); font-size: 0.85rem; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
+
+h1 { font-size: var(--t-2xl); line-height: 1.2; margin: 0 0 var(--s4); }
+h2 { font-size: var(--t-xl); line-height: 1.25; margin: var(--s6) 0 var(--s3); }
+h3 { font-size: var(--t-lg); margin: var(--s5) 0 var(--s2); }
+h4 { font-size: var(--t-base); margin: var(--s4) 0 var(--s2); }
+small, .blurb { font-size: var(--t-sm); color: var(--ink-soft); }
+
+/* Numbers line up in every table that carries a dose, a pH, or a percentage. */
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); }
+thead th { font-size: var(--t-sm); color: var(--ink-soft); font-weight: 600; }
+td:has(+ td), td { vertical-align: top; }
+section { margin: var(--s5) 0; }
+
 fieldset { border: 1px solid var(--line); margin: 1rem 0; }
-label { display: block; margin: 0.4rem 0; }
+
+button, .button {
+  font: inherit; min-height: var(--touch); padding: var(--s2) var(--s4);
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--ink); cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+button:hover:not(:disabled) { background: var(--muted); }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button[type='submit'], .button--primary {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+button[type='submit']:hover:not(:disabled) { filter: brightness(1.08); }
+
+input, select, textarea {
+  font: inherit; min-height: var(--touch); width: 100%; box-sizing: border-box;
+  padding: var(--s2) var(--s3); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); background: var(--surface); color: var(--ink);
+}
+input:disabled, select:disabled { background: var(--muted); cursor: not-allowed; }
+label { display: block; margin: var(--s3) 0; font-size: var(--t-sm); color: var(--ink-soft); }
+label input[type='checkbox'] { width: auto; min-height: auto; margin-right: var(--s2); }
+
+/* Nothing had a focus style. Keyboard users could not see where they were. */
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius-sm); }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--muted), var(--line), var(--muted));
+  background-size: 200% 100%; animation: shimmer 1.2s linear infinite;
+  border-radius: var(--radius-sm); height: 1rem; margin: var(--s2) 0;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+.empty {
+  border: 1px dashed var(--line-strong); border-radius: var(--radius);
+  padding: var(--s5); text-align: center; color: var(--ink-soft);
+}
+
 .error { color: var(--red); border: 1px solid var(--red); padding: 0.75rem; border-radius: 4px; }
 
-.headline { font-size: 1.4rem; font-weight: 700; padding: 0.6rem 0.8rem; border-radius: 4px; }
-.headline--red { color: var(--red); border: 2px solid var(--red); }
-.headline--amber { color: var(--amber); border: 2px solid var(--amber); }
-.headline--gray { color: var(--gray); border: 2px solid var(--gray); }
-.headline--green { color: var(--green); border: 2px solid var(--green); }
+.headline {
+  display: flex; align-items: center; gap: var(--s3);
+  font-size: var(--t-lg); font-weight: 700;
+  padding: var(--s3) var(--s4); border-radius: var(--radius);
+  border: 1px solid currentColor; box-shadow: var(--shadow);
+}
+.headline__glyph {
+  font-size: var(--t-xl); line-height: 1; width: 1.5em; text-align: center;
+}
+.headline--red { color: var(--red); background: var(--red-bg); }
+.headline--amber { color: var(--amber); background: var(--amber-bg); }
+.headline--gray { color: var(--gray); background: var(--gray-bg); }
+.headline--green { color: var(--green); background: var(--green-bg); }
+
+.verdict { display: inline-flex; align-items: center; gap: var(--s1); font-weight: 600; }
 .verdict--red { color: var(--red); } .verdict--amber { color: var(--amber); }
 .verdict--cannot_assess { color: var(--gray); } .verdict--pass { color: var(--green); }
+
+.finding-group { border: 1px solid var(--line); border-radius: var(--radius); margin: var(--s3) 0; }
+.finding-group > summary {
+  cursor: pointer; padding: var(--s3) var(--s4); font-weight: 600;
+  display: flex; align-items: center; gap: var(--s2);
+}
+.count-badge {
+  font-size: var(--t-xs); font-weight: 700; padding: 0 var(--s2);
+  border-radius: 999px; background: var(--muted); color: var(--ink-soft);
+}
+
 .truth--unconfirmed { color: var(--gray); }
 .truth__label { color: var(--gray); }
-.blurb { color: var(--gray); font-size: 0.9rem; }
 .region--dormant, .cell--inactive { color: var(--gray); background: var(--muted); }
 .cell--active { color: var(--green); font-weight: 600; }
 .cell--past-deadline { opacity: 0.55; }
@@ -41,6 +145,27 @@ label { display: block; margin: 0.4rem 0; }
                 align-items: center; margin: 0.25rem 0; }
 .field-error { color: var(--red); }
 
+@media (max-width: 48rem) {
+  .app { padding: var(--s3); }
+  header { flex-wrap: wrap; gap: var(--s2); }
+  h1 { font-size: var(--t-xl); }
+
+  /* A wide table becomes a scroller rather than a squeeze. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll table { min-width: 34rem; }
+
+  /* The editor's three-column grid stacks. */
+  .editor-field { grid-template-columns: 1fr; gap: var(--s1); }
+
+  /* Trial forms: one column, full-width controls, thumb-sized targets. */
+  [data-testid='batch-form'] label,
+  [data-testid='observation-form'] label,
+  [data-testid='symptom-form'] label { margin: var(--s4) 0; }
+  [data-testid='batch-form'] button,
+  [data-testid='observation-form'] button,
+  [data-testid='symptom-form'] button { width: 100%; }
+}
+
 /* Spec §10 screen 8 — print to PDF. Navigation and controls go; the disclaimer stays. */
 @media print {
   header nav, button, .banner, .no-print { display: none !important; }
@@ -48,7 +173,12 @@ label { display: block; margin: 0.4rem 0; }
   a { text-decoration: none; color: inherit; }
   table { page-break-inside: auto; }
   tr { page-break-inside: avoid; }
+  h2 { page-break-after: avoid; }
+  .finding-group { break-inside: avoid; }
+  .finding-group > summary { list-style: none; }
+  details:not([open]) > *:not(summary) { display: revert; }  /* print collapsed groups too */
   footer { border-top: 1px solid #000; }
+  :root { --shadow: none; }
 }
 
 /* Spec §6.5 — the checklist reads at a glance: due now, done, not yet. */
