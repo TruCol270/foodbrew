@@ -372,6 +372,13 @@ class RecordEditIn(BaseModel):
     fields: dict[str, Any] = Field(default_factory=dict)
 
 
+class StructuredEditIn(BaseModel):
+    """A structured catalogue field. `value` is a list, checked server-side
+    against the closed enums (plan decision #4); no truth label is accepted."""
+
+    value: list[dict] | list[str]
+
+
 class ProposalIn(BaseModel):
     table_name: str
     record_id: str

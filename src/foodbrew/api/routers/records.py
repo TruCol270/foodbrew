@@ -12,7 +12,13 @@ import sqlite3
 from fastapi import APIRouter, Depends
 
 from foodbrew.api.deps import get_conn
-from foodbrew.api.schemas import AuditEventOut, EnzymeOut, FoodOut, RecordEditIn
+from foodbrew.api.schemas import (
+    AuditEventOut,
+    EnzymeOut,
+    FoodOut,
+    RecordEditIn,
+    StructuredEditIn,
+)
 from foodbrew.store import audit as audit_store
 from foodbrew.store import foods as foods_store
 from foodbrew.store import records as records_store
@@ -39,6 +45,15 @@ def reset_enzyme(enzyme_id: str, conn: sqlite3.Connection = Depends(get_conn)):
     return _enzyme(conn, enzyme_id)
 
 
+@router.put("/enzymes/{enzyme_id}/structured/{field}", response_model=dict)
+def edit_enzyme_structured(
+    enzyme_id: str, field: str, payload: StructuredEditIn,
+    conn: sqlite3.Connection = Depends(get_conn),
+):
+    records_store.update_structured(conn, "enzyme", enzyme_id, field, payload.value)
+    return {"ok": True}
+
+
 @router.put("/foods/{food_id}", response_model=FoodOut)
 def update_food(
     food_id: str, payload: RecordEditIn, conn: sqlite3.Connection = Depends(get_conn)
@@ -51,6 +66,15 @@ def update_food(
 def reset_food(food_id: str, conn: sqlite3.Connection = Depends(get_conn)):
     records_store.reset_record(conn, "food", food_id)
     return FoodOut.of(foods_store.get(conn, food_id))
+
+
+@router.put("/foods/{food_id}/structured/{field}", response_model=dict)
+def edit_food_structured(
+    food_id: str, field: str, payload: StructuredEditIn,
+    conn: sqlite3.Connection = Depends(get_conn),
+):
+    records_store.update_structured(conn, "food", food_id, field, payload.value)
+    return {"ok": True}
 
 
 @router.post("/reference/reset", status_code=204)
