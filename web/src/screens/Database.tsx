@@ -1,19 +1,35 @@
 import { useEffect, useState } from 'react'
 
 import { api } from '../api/client'
+import { StructuralEditor } from '../components/StructuralEditor'
 import { TruthValue } from '../components/TruthValue'
 import type { Enzyme, Food, Proposal, Tracked } from '../api/types'
 
-/** The fields `store/records.py` will accept. Keep the two lists in step. */
+/** The fields `store/records.py` will accept, plus the unit each is measured
+ * in. Keep this list and `records.py`'s in step. */
 const ENZYME_FIELDS = [
-  'ph_min', 'ph_max', 'ph_opt_low', 'ph_opt_high', 'ph_shelf_stable_min',
-  'temp_min_c', 'temp_max_c', 'temp_opt_c',
-  'dose_min', 'dose_max', 'dose_evidence_threshold',
+  { field: 'ph_min', label: 'Active pH floor', unit: '' },
+  { field: 'ph_max', label: 'Active pH ceiling', unit: '' },
+  { field: 'ph_opt_low', label: 'Optimal pH — low end', unit: '' },
+  { field: 'ph_opt_high', label: 'Optimal pH — high end', unit: '' },
+  { field: 'ph_shelf_stable_min', label: 'Shelf-stable pH floor', unit: '' },
+  { field: 'temp_min_c', label: 'Minimum temperature', unit: '°C' },
+  { field: 'temp_max_c', label: 'Maximum temperature', unit: '°C' },
+  { field: 'temp_opt_c', label: 'Optimal temperature', unit: '°C' },
+  { field: 'dose_min', label: 'Minimum dose', unit: '' },
+  { field: 'dose_max', label: 'Maximum dose', unit: '' },
+  { field: 'dose_evidence_threshold', label: 'Evidence threshold', unit: 'per serving' },
 ] as const
-const FOOD_FIELDS = ['ph', 'water_content_pct', 'typical_load_value'] as const
+const FOOD_FIELDS = [
+  { field: 'ph', label: 'pH', unit: '' },
+  { field: 'water_content_pct', label: 'Water content', unit: '%' },
+  { field: 'typical_load_value', label: 'Typical load', unit: '' },
+] as const
 
-function FieldRow({ name, tracked, onSave }: {
-  name: string
+function FieldRow({ field, label, unit, tracked, onSave }: {
+  field: string
+  label: string
+  unit: string
   tracked: Tracked
   onSave: (value: number | null) => void
 }) {
@@ -28,13 +44,13 @@ function FieldRow({ name, tracked, onSave }: {
 
   return (
     <div className="editor-field">
-      <label htmlFor={`field-${name}`}>{name}</label>
-      <input id={`field-${name}`} data-testid={`field-${name}`} value={draft}
+      <label htmlFor={`field-${field}`}>{label}</label>
+      <input id={`field-${field}`} data-testid={`field-${field}`} value={draft}
              aria-invalid={invalid}
              onChange={(e) => setDraft(e.target.value)} />
       <span>
-        <TruthValue tracked={tracked} />{' '}
-        <button type="button" data-testid={`save-${name}`} disabled={invalid}
+        <TruthValue tracked={tracked} unit={unit} showSource />{' '}
+        <button type="button" data-testid={`save-${field}`} disabled={invalid}
                 onClick={() => onSave(draft === '' ? null : Number(draft))}>
           Save
         </button>
@@ -160,10 +176,22 @@ export default function Database() {
         </select>
         {enzyme && (
           <>
-            {ENZYME_FIELDS.map((name) => (
-              <FieldRow key={name} name={name} tracked={enzyme[name]}
-                        onSave={(value) => run(() => api.updateEnzyme(enzyme.id, { [name]: value }))} />
+            <p className="blurb" data-testid={`last-edited-${enzyme.id}`}>
+              {enzyme.last_edited
+                ? `You last edited this on ${enzyme.last_edited.slice(0, 10)}`
+                : 'Shipped value — you have not edited this record'}
+            </p>
+            {ENZYME_FIELDS.map(({ field, label, unit }) => (
+              <FieldRow key={field} field={field} label={label} unit={unit}
+                        tracked={enzyme[field]}
+                        onSave={(value) => run(() => api.updateEnzyme(enzyme.id, { [field]: value }))} />
             ))}
+            <StructuralEditor
+              entries={enzyme.degrades_structural}
+              onSave={async (value) => {
+                await run(() => api.updateStructured('enzymes', enzyme.id, 'degrades_structural_json', value))
+              }}
+            />
             <button type="button" data-testid="reset-enzyme"
                     onClick={() => run(() => api.resetEnzyme(enzyme.id))}>
               Reset this enzyme to the shipped values
@@ -180,9 +208,15 @@ export default function Database() {
         </select>
         {food && (
           <>
-            {FOOD_FIELDS.map((name) => (
-              <FieldRow key={name} name={name} tracked={food[name]}
-                        onSave={(value) => run(() => api.updateFood(food.id, { [name]: value }))} />
+            <p className="blurb" data-testid={`last-edited-${food.id}`}>
+              {food.last_edited
+                ? `You last edited this on ${food.last_edited.slice(0, 10)}`
+                : 'Shipped value — you have not edited this record'}
+            </p>
+            {FOOD_FIELDS.map(({ field, label, unit }) => (
+              <FieldRow key={field} field={field} label={label} unit={unit}
+                        tracked={food[field]}
+                        onSave={(value) => run(() => api.updateFood(food.id, { [field]: value }))} />
             ))}
             <button type="button" data-testid="reset-food"
                     onClick={() => run(() => api.resetFood(food.id))}>
