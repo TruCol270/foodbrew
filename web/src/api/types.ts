@@ -40,6 +40,7 @@ export interface Enzyme {
   cost_tier: string
   supplier_note: string
   notes: string
+  last_edited: string | null
   degrades_structural: { structural_class: string; tier: string }[]
   ph_min: Tracked
   ph_max: Tracked
@@ -67,10 +68,12 @@ export interface Food {
   contains_protease: boolean
   is_heat_processed: boolean
   structural: string[]
+  allergens: string[]
   notes: string
   ph: Tracked
   water_content_pct: Tracked
   typical_load_value: Tracked
+  last_edited: string | null
 }
 
 export interface Ingredient { food_id: string; amount_g: number; order: number }
@@ -381,4 +384,76 @@ export interface ObservedEnvelope {
   trial_id: string | null
   profiles: Record<DwellProfile, ObservedProfile>
   scale_note: string
+}
+
+export type Allergen =
+  | 'milk' | 'egg' | 'fish' | 'crustacean_shellfish' | 'tree_nut'
+  | 'peanut' | 'wheat' | 'soy' | 'sesame'
+
+export interface FormulaLine {
+  position: number
+  food_id: string
+  food_name: string
+  amount_g: number
+  percent_of_total: number | null
+  ph: Tracked
+  water_content_pct: Tracked
+  allergens: string[]
+}
+
+export interface Formula {
+  lines: FormulaLine[]
+  total_g: number
+  printed_percent_total: number | null
+}
+
+export interface ProcessLine {
+  order: number
+  label: string
+  is_heat: boolean
+  is_enzyme_addition_point: boolean
+}
+
+export interface AllergenEntry {
+  allergen: Allergen
+  text: string
+  from_food_names: string[]
+}
+
+export interface AllergenDeclaration {
+  entries: AllergenEntry[]
+  unrecorded_food_names: string[]
+}
+
+export interface BatchRecord {
+  made_at: string
+  batch_size_g: number | null
+  measured_ph: number | null
+  ph_method: 'strip' | 'meter' | 'none'
+  make_minutes: number | null
+  difficulty_score: number | null
+  enzyme_source_note: string
+  enzyme_addition_step: number | null
+  storage_mode: 'refrigerated' | 'ambient'
+  process_notes: string
+}
+
+export interface Report {
+  evaluation_id: string
+  recipe_id: string
+  recipe_name: string
+  created_at: string
+  engine_version: string
+  headline: Headline
+  stale: boolean
+  formula: Formula
+  process: ProcessLine[]
+  allergens: AllergenDeclaration
+  batches: BatchRecord[]
+  serving_size_g: number | null
+  measured_ph: Tracked
+  dwell_profile: DwellProfile | null
+  format: Format
+  trigger_food_names: string[]
+  application_food_names: string[]
 }

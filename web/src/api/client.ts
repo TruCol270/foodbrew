@@ -1,6 +1,7 @@
 import type {
   AuditEvent, Comparison, Enzyme, Evaluation, EvaluationSummary, Food, Formulation,
-  Proposal, Recipe, SelectedEnzyme, Substrate, SubstrateRow, SymptomDose, Trial, TrialSummary,
+  Proposal, Recipe, Report, SelectedEnzyme, Substrate, SubstrateRow, SymptomDose, Trial,
+  TrialSummary,
 } from './types'
 
 /** The API's error shape. A rejected formulation is normal traffic, not a crash. */
@@ -101,6 +102,10 @@ export const api = {
     post<Trial>(`/trial-batches/${batchId}/symptom-entries`, body),
   previewSymptom: (batchId: string, body: unknown) =>
     post<SymptomDose>(`/trial-batches/${batchId}/symptom-preview`, body),
+
+  report: (evaluationId: string) => request<Report>(`/evaluations/${evaluationId}/report`),
+  updateStructured: (table: 'enzymes' | 'foods', id: string, field: string, value: unknown) =>
+    put<{ ok: boolean }>(`/${table}/${id}/structured/${field}`, { value }),
 
   reportUrl: (evaluationId: string) => `/api/v1/export/${evaluationId}.md`,
 }
