@@ -7,6 +7,7 @@ import { BatchRecords } from '../components/BatchRecords'
 import { DoseCards } from '../components/DoseCards'
 import { EnvelopePanel } from '../components/EnvelopePanel'
 import { FindingGroups } from '../components/FindingGroups'
+import { FinishedProductParameters } from '../components/FinishedProductParameters'
 import { FormatRecommendationPanel } from '../components/FormatRecommendation'
 import { FormulaTable } from '../components/FormulaTable'
 import { GiStrip } from '../components/GiStrip'
@@ -82,6 +83,7 @@ export default function Report() {
           </section>
           <FormulaTable formula={report.formula} process={report.process} />
           <AllergenDeclarationPanel declaration={report.allergens} />
+          <FinishedProductParameters measuredPh={report.measured_ph} />
         </>
       )}
 
