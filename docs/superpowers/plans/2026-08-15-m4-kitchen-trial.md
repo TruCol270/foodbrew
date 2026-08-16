@@ -5048,11 +5048,10 @@ test('a logged observation lands in the observed column and the report', async (
 
   await page.getByRole('link', { name: /report with these results/i }).click()
   await expect(page.getByTestId('observed')).toContainText('Findings')
-  await expect(page.getByTestId('observed-packed')).toContainText('anecdote')
-    .catch(async () => {
-      // The tier shown is the driver's; with a control it reads suggestive.
-      await expect(page.getByTestId('observed-packed')).toContainText('suggestive')
-    })
+  // The observation ticked the undressed control, and `trial_rules.confidence_tier`
+  // returns `suggestive` whenever that flag is set — so this is deterministic, and
+  // asserting the alternative would be asserting something the app cannot render.
+  await expect(page.getByTestId('observed-packed')).toContainText('suggestive')
 })
 
 test('a meal shows its dose against the threshold before it is saved', async ({ page }) => {
@@ -5110,7 +5109,12 @@ test('the markdown export carries predicted and observed', async ({ page, reques
 - [ ] **Step 2: Run it against the built app**
 
 Run: `cd web && npm run build && npm run e2e`
-Expected: every spec passes — M3's seven plus these six.
+Expected: every spec passes — M3's nine (two in `verdict.spec.ts`, seven in `variants.spec.ts`) plus these six, for fifteen.
+
+Two app-side prerequisites surfaced when this spec was first run, and both are part of this task:
+
+- `web/src/screens/FormulationSetup.tsx` had no `data-testid` on the application-food checkboxes, so `buildAndEvaluate` could not select one, `application_food_ids` stayed empty, and every `food_texture` observation was refused by the server ("Say which food you looked at"). Add `data-testid={`application-${f.id}`}` beside the existing `trigger-${f.id}` and check `application-romaine` in `buildAndEvaluate`.
+- `web/playwright.config.ts` needs `workers: 1`. Two spec files now edit the shared `enzyme` row and reset it; under parallel workers M3's unconditional reset in `variants.spec.ts` wipes this spec's threshold mid-test. One worker serializes every test against the one throwaway database, and the fix belongs at run level rather than inside either spec.
 
 - [ ] **Step 3: Commit**
 
@@ -5182,7 +5186,7 @@ and add `trial` to the `.PHONY` line.
 - [ ] **Step 3: Run everything**
 
 Run: `.venv/bin/ruff check src tests && .venv/bin/pytest -q && cd web && npm run typecheck && npm run build && npm run e2e`
-Expected: ruff clean, every test green, no type errors, a `web/dist` build, thirteen Playwright specs passing.
+Expected: ruff clean, every test green, no type errors, a `web/dist` build, fifteen Playwright specs passing.
 
 - [ ] **Step 4: Walk the §14 exit check by hand**
 
@@ -5215,7 +5219,7 @@ Before declaring M4 — and v1 — done, all of the following must hold:
 - [ ] `.venv/bin/pytest -q` passes with zero failures and zero skips.
 - [ ] `.venv/bin/ruff check src tests` is clean.
 - [ ] `cd web && npm run typecheck && npm run build` succeeds.
-- [ ] `cd web && npm run e2e` passes all thirteen specs against the built app.
+- [ ] `cd web && npm run e2e` passes all fifteen specs against the built app.
 - [ ] **Every M1, M2 and M3 test still passes unchanged.** M4 modifies exactly three shipped files that anything else depends on — `engine/report.py`, `routers/evaluations.py`, `routers/export.py` — and every change to them is additive with a default. A moved golden fixture means something was not additive.
 - [ ] `tests/store/test_observations.py::test_recording_an_observation_never_touches_the_evaluation` and `tests/api/test_evaluation_observed.py::test_the_observed_column_never_moves_the_headline_or_the_prediction` both pass — §13's property, at both levels.
 - [ ] `tests/store/test_trial_ph.py` passes in full — §6.7's second branch is live and §13's pH resolution test is satisfied end to end.
