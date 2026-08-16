@@ -90,7 +90,7 @@ foodbrew/
 │           ├── report.py                 # NEW: GET /evaluations/{id}/report
 │           ├── records.py                #   + structured-field edits, last_edited on record payloads
 │           └── export.py                 #   assembles the new sections
-├── seed/foods.json                       #   + allergens on 16 records (Task 4)
+├── seed/foods.json                       #   + allergens on 15 records (Task 4)
 ├── web/src/
 │   ├── api/{client.ts,types.ts}          #   + report payload, structured fields, last_edited
 │   ├── components/
@@ -894,7 +894,7 @@ Also add to `CustomFoodIn`, so a founder-created food can declare its allergens:
 
 and thread it in `store/foods.create_custom` the same way `structural` is already threaded — read that function and mirror it exactly, validating through `engine.allergens.parse` so a bad token is a `ValidationRejection`, not a stored typo.
 
-- [ ] **Step 6: Seed the sixteen records that carry an allergen**
+- [ ] **Step 6: Seed the fifteen records that carry an allergen**
 
 In `seed/foods.json`, add an `"allergens"` key to exactly these records. Every id below was verified present in the shipped catalogue; the other 37 foods get no key at all, which reads as *not recorded* rather than *none* (decision #2).
 
