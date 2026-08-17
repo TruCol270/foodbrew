@@ -116,3 +116,35 @@ def test_the_noindex_header_is_on_a_success(gated):
 
 def test_robots_disallows_everything(gated):
     assert "Disallow: /" in gated.get("/robots.txt").text
+
+
+@pytest.mark.parametrize("supplied", ["café", "пароль", "🔑", "naïve-guess"])
+def test_a_non_ascii_password_guess_is_refused_not_crashed(gated, supplied):
+    """`hmac.compare_digest` accepts str only when both sides are ASCII and
+    raises TypeError otherwise, so this used to be an unauthenticated 500 on
+    every protected endpoint. raise_server_exceptions=False is what production
+    actually does — the default re-raises and hides the status code.
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(gated.app, raise_server_exceptions=False) as client:
+        assert client.get("/api/v1/enzymes", headers=_auth(supplied)).status_code == 401
+
+
+@pytest.mark.parametrize("password", ["café-au-lait", "пароль-длинный", "key-🔑-emoji"])
+def test_a_non_ascii_configured_password_still_lets_her_in(tmp_path, password):
+    """The worse half of the same bug: a non-ASCII secret would have locked the
+    founder out of her own instance, because the correct password crashed too.
+    """
+    from fastapi.testclient import TestClient
+
+    app = create_app(
+        Settings(
+            db_path=tmp_path / "db.sqlite",
+            web_dist=tmp_path / "none",
+            access_password=password,
+        )
+    )
+    with TestClient(app, raise_server_exceptions=False) as client:
+        assert client.get("/api/v1/enzymes", headers=_auth(password)).status_code == 200
+        assert client.get("/api/v1/enzymes", headers=_auth(password + "x")).status_code == 401

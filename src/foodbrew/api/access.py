@@ -59,6 +59,17 @@ def install_access_gate(app: FastAPI, password: str) -> None:
         offered = supplied_password(request.headers.get("authorization"))
         # compare_digest, not ==: a short-circuiting comparison leaks the length
         # of the shared prefix to anyone who can time the response.
-        if offered is None or not hmac.compare_digest(offered, password):
+        #
+        # Compared as BYTES, not str. `hmac.compare_digest` accepts str only
+        # when both sides are ASCII, and raises TypeError otherwise — so a
+        # password containing an accent, Cyrillic, or an emoji turned every
+        # protected endpoint into an unauthenticated 500. Worse, it did so for
+        # the *correct* password too: configuring a non-ASCII secret would have
+        # locked the founder out of her own instance with no way to tell why.
+        # Encoding both sides makes the comparison total, and keeps it
+        # constant-time over the encoded bytes.
+        if offered is None or not hmac.compare_digest(
+            offered.encode("utf-8"), password.encode("utf-8")
+        ):
             return JSONResponse(status_code=401, content={"detail": REFUSAL}, headers=CHALLENGE)
         return await call_next(request)
