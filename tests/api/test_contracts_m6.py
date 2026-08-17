@@ -47,7 +47,10 @@ def test_the_access_gate_reads_no_database():
 def test_the_gate_compares_in_constant_time():
     """A `==` here leaks the shared prefix length to a timing attack."""
     text = (SRC / "api" / "access.py").read_text(encoding="utf-8")
-    assert "compare_digest" in text
+    code_lines = "\n".join(
+        line for line in text.splitlines() if not line.strip().startswith("#")
+    )
+    assert "compare_digest" in code_lines
 
 
 def test_no_tracked_file_contains_an_obvious_secret():
