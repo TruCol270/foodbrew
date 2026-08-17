@@ -15,7 +15,7 @@ export function FormulaTable({ formula, process }: {
         calculated from the weights, so the two cannot disagree.
       </p>
       <div className="table-scroll">
-        <table>
+        <table data-testid="formula-table">
           <thead>
             <tr>
               <th>#</th><th>Ingredient</th><th>% of total</th><th>Grams</th>

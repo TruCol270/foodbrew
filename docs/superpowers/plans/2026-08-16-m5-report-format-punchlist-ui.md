@@ -3928,6 +3928,20 @@ stronger than the evidence.**
    current-schema-minus-column equals old-schema, which stops holding once a second
    column lands. Tighten it when the next migration is written.
 
+**One M5 test was wrong, and the sign-off run is what caught it.** CI failed once on
+`report.spec.ts`'s order-of-addition case while `main` was green on identical code.
+The cause was not a race: `allInnerTexts()` does not auto-wait, the report payload
+arrives from a second fetch after the screen mounts, and the assertion therefore
+compared `[]` to `[]` and passed while proving nothing. Its locator also swept the
+whole `formula` section, which contains the process table whose step numbers restart
+at 1, mixing two independent sequences. And the column it asserted on is
+`enumerate(formula.lines, start=1)` — a render-order enumeration that ascends no
+matter what order the engine produced, so the test could never have detected the
+thing its name claimed. Replaced with an assertion that compares the rendered
+ingredient rows against `formula.lines` from the report endpoint, behind an
+auto-waiting visibility check. The engine's ordering was never at risk:
+`build()` sorts by `(order, food_id)` and always did.
+
 **Not an exit criterion, and still unverified:** `docker compose up --build`. The
 Docker daemon was unavailable throughout M5, so the container boot path has never
 been exercised. `make e2e` runs uvicorn directly, which proves the app but not the
