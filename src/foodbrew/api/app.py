@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import sqlite3
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from foodbrew import ENGINE_VERSION
+from foodbrew.api.access import install_access_gate
 from foodbrew.api.routers import (
     catalog,
     evaluations,
@@ -24,6 +26,7 @@ from foodbrew.api.routers import (
 from foodbrew.api.settings import Settings, load_settings
 from foodbrew.db import ensure_database
 from foodbrew.engine import ValidationRejection
+from foodbrew.store.connection import connect
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -39,6 +42,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="FoodBrew", version=ENGINE_VERSION, lifespan=lifespan)
     app.state.settings = settings
 
+    # Only when a password is configured (decision #12): local development and
+    # the test suite run open, and the deploy checklist's 401 smoke test is what
+    # catches a production instance whose secret was never set.
+    if settings.access_password:
+        install_access_gate(app, settings.access_password)
+
     @app.exception_handler(ValidationRejection)
     async def _rejection(_: Request, exc: ValidationRejection) -> JSONResponse:
         # Spec §6.7 / §6.2 R14: degenerate input is refused, and the message is
@@ -46,8 +55,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.get("/api/v1/health")
-    def health() -> dict:
-        return {"status": "ok", "engine_version": ENGINE_VERSION}
+    def health() -> JSONResponse:
+        # Decision #7: this endpoint is what Fly restarts the machine on, so it
+        # has to fail when the database is unusable rather than only when the
+        # process is dead. One indexed read is cheap enough for a 30s check.
+        try:
+            with connect(app.state.settings.db_path) as conn:
+                conn.execute("SELECT 1 FROM enzyme LIMIT 1").fetchone()
+        except sqlite3.Error as exc:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unavailable",
+                    "engine_version": ENGINE_VERSION,
+                    "database": str(exc),
+                },
+            )
+        return JSONResponse(
+            content={"status": "ok", "engine_version": ENGINE_VERSION, "database": "ok"}
+        )
+
+    @app.get("/robots.txt", include_in_schema=False)
+    def robots() -> PlainTextResponse:
+        # Decision #11: the gate refuses crawlers anyway, but a fly.dev URL in a
+        # search index attracts password-guessing traffic and needlessly
+        # advertises that the instance exists.
+        return PlainTextResponse("User-agent: *\nDisallow: /\n")
+
+    @app.middleware("http")
+    async def _noindex(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
 
     for router in (
         catalog.router, recipes.router, formulations.router, evaluations.router,

@@ -13,6 +13,15 @@ The database is created on first boot at `FOODBREW_DB_PATH` (default
 `data/foodbrew.db`) and is never overwritten afterwards. `make db` forces a
 refresh of the reference tables from `seed/*.json` and discards edits to them.
 
+## The hosted instance
+
+One private Fly.io instance for the founder: one machine, one volume, one shared
+password (`FOODBREW_ACCESS_PASSWORD`). Unset that variable and the app runs open,
+which is what local development and the test suite do.
+
+Deploy steps, backup and restore, and the day-2 runbook are in
+[docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Working a verdict
 
 From a verdict screen you can:
