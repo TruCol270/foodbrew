@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from foodbrew import ENGINE_VERSION
@@ -55,6 +55,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/v1/health")
     def health() -> dict:
         return {"status": "ok", "engine_version": ENGINE_VERSION}
+
+    @app.get("/robots.txt", include_in_schema=False)
+    def robots() -> PlainTextResponse:
+        # Decision #11: the gate refuses crawlers anyway, but a fly.dev URL in a
+        # search index attracts password-guessing traffic and needlessly
+        # advertises that the instance exists.
+        return PlainTextResponse("User-agent: *\nDisallow: /\n")
+
+    @app.middleware("http")
+    async def _noindex(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
 
     for router in (
         catalog.router, recipes.router, formulations.router, evaluations.router,

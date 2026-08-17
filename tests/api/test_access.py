@@ -103,3 +103,16 @@ def test_robots_needs_no_password(gated):
 def test_no_gate_is_installed_when_no_password_is_set(client):
     """The existing suite and local dev must be untouched (decision #12)."""
     assert client.get("/api/v1/enzymes").status_code == 200
+
+
+def test_the_noindex_header_is_on_a_refusal(gated):
+    assert "noindex" in gated.get("/api/v1/enzymes").headers["x-robots-tag"]
+
+
+def test_the_noindex_header_is_on_a_success(gated):
+    response = gated.get("/api/v1/enzymes", headers=_auth(PASSWORD))
+    assert "noindex" in response.headers["x-robots-tag"]
+
+
+def test_robots_disallows_everything(gated):
+    assert "Disallow: /" in gated.get("/robots.txt").text
