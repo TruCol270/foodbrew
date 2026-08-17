@@ -70,3 +70,28 @@ def test_no_secret_is_written_into_the_config():
     assert "foodbrew_access_password" not in text
     for leaky in ("password =", "secret =", "token ="):
         assert leaky not in text
+
+
+def test_the_backup_workflow_reads_every_credential_from_secrets():
+    workflow = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / ".github" / "workflows" / "backup.yml"
+    ).read_text(encoding="utf-8")
+    for name in (
+        "FLY_API_TOKEN",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET",
+        "R2_ENDPOINT",
+    ):
+        assert f"secrets.{name}" in workflow, f"{name} is not read from secrets"
+
+
+def test_the_backup_verifies_the_copy_before_uploading_it():
+    """An unverified backup is not a backup."""
+    workflow = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / ".github" / "workflows" / "backup.yml"
+    ).read_text(encoding="utf-8")
+    assert "integrity_check" in workflow
+    assert workflow.index("integrity_check") < workflow.index("aws s3 cp")

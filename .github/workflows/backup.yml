@@ -1,0 +1,73 @@
+# A daily copy of the founder's bench data, independent of Fly's own snapshots
+# (M6 decision #4). The snapshot is TAKEN inside the machine by a stdlib-only
+# module and MOVED by this job, so the container image never needs an S3 client
+# (decision #5).
+name: Backup
+
+on:
+  schedule:
+    # 07:17 UTC — off the hour, so it does not collide with every other cron.
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: foodbrew-backup
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: foodbrew
+    steps:
+      # No confirmable GitHub Release exists on superfly/flyctl-actions (the
+      # /releases page is empty — verified via the GitHub API before writing
+      # this file), so per the plan's fallback this pins the commit SHA behind
+      # the newest tag (v1 / 1 / 1.6, all identical) instead of a moving branch.
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+
+      - name: Take a consistent snapshot inside the machine
+        # /tmp, not /data: the copy is the size of the database, and writing it
+        # onto the volume would double usage during every backup (decision #6).
+        run: |
+          flyctl ssh console -a "$FLY_APP" -C \
+            "python -m foodbrew.tools.snapshot /data/foodbrew.db /tmp/foodbrew-snapshot.db"
+
+      - name: Pull it down
+        run: flyctl ssh sftp get /tmp/foodbrew-snapshot.db foodbrew-snapshot.db -a "$FLY_APP"
+
+      - name: Verify it is a real database before trusting it
+        # An unverified backup is not a backup. A truncated transfer would
+        # otherwise be uploaded and sit there looking like protection.
+        run: |
+          python -c "
+          import sqlite3, sys
+          conn = sqlite3.connect('foodbrew-snapshot.db')
+          assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok', 'integrity check failed'
+          rows = conn.execute('SELECT count(*) FROM food').fetchone()[0]
+          assert rows > 0, 'no rows in food'
+          print(f'integrity ok, {rows} foods')
+          "
+
+      - name: Name it and compress it
+        run: |
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          gzip -9 foodbrew-snapshot.db
+          mv foodbrew-snapshot.db.gz "foodbrew-${stamp}.db.gz"
+          ls -la foodbrew-*.db.gz
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3 cp foodbrew-*.db.gz "s3://${R2_BUCKET}/daily/" --endpoint-url "$R2_ENDPOINT"
+          aws s3 ls "s3://${R2_BUCKET}/daily/" --endpoint-url "$R2_ENDPOINT" | tail -5
+
+      - name: Remove the in-machine copy
+        if: always()
+        run: flyctl ssh console -a "$FLY_APP" -C "rm -f /tmp/foodbrew-snapshot.db"
