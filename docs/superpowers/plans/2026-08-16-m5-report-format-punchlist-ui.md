@@ -3853,19 +3853,19 @@ git commit -m "docs: document the report format, the database screen, and the ch
 
 ## M5 exit criteria
 
-- [ ] `.venv/bin/pytest -q` passes with zero failures and zero skips.
-- [ ] `.venv/bin/ruff check src tests` is clean.
-- [ ] `cd web && npm run typecheck && npm run build` succeeds.
-- [ ] `cd web && npm run e2e` passes all 21 specs against the built app.
-- [ ] **Every M1–M4 test still passes.** M5 changes no rule and no verdict. The only pre-existing assertions that may move are three, all in `tests/engine/test_report.py` and all caused by Task 5: one section-name entry that names the old `## What was checked` heading, and the two in `test_the_process_sequence_marks_the_heat_step_and_the_addition_point` that name the old numbered-list process format (`"1. warm — involves heat"`) and become table-row assertions (`"| 1 | warm | yes | no |"`) when the process section becomes a table. Each is replaced by an equal-or-stricter assertion against real rendered output; none is deleted, and no other pre-existing assertion anywhere may change.
-- [ ] `tests/store/test_migrations.py` passes in full, including `test_a_pre_migration_database_is_upgraded_on_boot` and `test_the_upgrade_preserves_the_rows_it_finds` — the migration is the one change that can destroy the founder's data, and these are what say it does not.
-- [ ] `tests/api/test_report_endpoint.py::test_the_two_renderings_agree_on_every_shared_number` passes — decision #8's contract.
-- [ ] `tests/store/test_structured_records.py::test_inulinase_can_be_moved_off_unconfirmed` passes — §15 item 4 has an in-product answer.
-- [ ] `tests/test_spec_amendments.py` passes — the spec now describes what was built, and two of its claims are checked against the code rather than asserted in prose.
-- [ ] `tests/api/test_contracts_m5.py` passes in full: no rule reads an allergen, the new engine modules are pure and clockless, the migration list cannot drop a column, no component hardcodes a colour, every verdict carries a glyph, and the report has one assembler.
-- [ ] `tests/test_seed_prebiotic_scope.py` passes — R9's trigger set is the three §9.2 names.
-- [ ] A database created by the M4 branch boots under M5, keeps its edits, and reports its pre-M5 evaluations as *upgraded* rather than *edited*.
-- [ ] The founder completes the hand walk in Task 20 step 4, including the dark-mode and phone-width checks.
+- [x] `.venv/bin/pytest -q` passes with zero failures and zero skips.
+- [x] `.venv/bin/ruff check src tests` is clean.
+- [x] `cd web && npm run typecheck && npm run build` succeeds.
+- [x] `cd web && npm run e2e` passes all 21 specs against the built app.
+- [x] **Every M1–M4 test still passes.** M5 changes no rule and no verdict. The only pre-existing assertions that may move are three, all in `tests/engine/test_report.py` and all caused by Task 5: one section-name entry that names the old `## What was checked` heading, and the two in `test_the_process_sequence_marks_the_heat_step_and_the_addition_point` that name the old numbered-list process format (`"1. warm — involves heat"`) and become table-row assertions (`"| 1 | warm | yes | no |"`) when the process section becomes a table. Each is replaced by an equal-or-stricter assertion against real rendered output; none is deleted, and no other pre-existing assertion anywhere may change.
+- [x] `tests/store/test_migrations.py` passes in full, including `test_a_pre_migration_database_is_upgraded_on_boot` and `test_the_upgrade_preserves_the_rows_it_finds` — the migration is the one change that can destroy the founder's data, and these are what say it does not.
+- [x] `tests/api/test_report_endpoint.py::test_the_two_renderings_agree_on_every_shared_number` passes — decision #8's contract.
+- [x] `tests/store/test_structured_records.py::test_inulinase_can_be_moved_off_unconfirmed` passes — §15 item 4 has an in-product answer.
+- [x] `tests/test_spec_amendments.py` passes — the spec now describes what was built, and two of its claims are checked against the code rather than asserted in prose.
+- [x] `tests/api/test_contracts_m5.py` passes in full: no rule reads an allergen, the new engine modules are pure and clockless, the migration list cannot drop a column, no component hardcodes a colour, every verdict carries a glyph, and the report has one assembler.
+- [x] `tests/test_seed_prebiotic_scope.py` passes — R9's trigger set is the three §9.2 names.
+- [x] A database created by the M4 branch boots under M5, keeps its edits, and reports its pre-M5 evaluations as *upgraded* rather than *edited*.
+- [x] The founder completes the hand walk in Task 20 step 4, including the dark-mode and phone-width checks.
 
 ---
 
@@ -3893,3 +3893,62 @@ git commit -m "docs: document the report format, the database screen, and the ch
 
 
 
+
+---
+
+## M5 sign-off
+
+All thirteen exit criteria met. Verified on `main` at `7f39a76` (merge of PR #5):
+
+```
+pytest              754 passed, 0 failed, 0 skipped
+ruff check          All checks passed!
+npm run typecheck   clean
+npm run build       clean
+npm run e2e         21 passed
+```
+
+The founder completed the hand walk on 2026-08-16, including the print, dark-mode
+and phone-width checks, and reported no defects.
+
+**Two caveats on how two of the criteria were discharged, so the record is not
+stronger than the evidence.**
+
+1. *"A database created by the M4 branch boots under M5."* Discharged against a
+   database built through M4's own HTTP API at the M4 branch tip (`826bc68`), with
+   a real founder edit and a real evaluation, then booted under M5's
+   `ensure_database`: it boots clean, the edit survives, and the pre-M5 evaluation
+   reports `field_added` only, which the UI renders as *predates a catalogue
+   upgrade* rather than an edit banner. This is a faithful proxy, not the founder's
+   own `data/foodbrew.db` from a live session, which was not available.
+2. *The migration test* builds a pre-migration database from the current schema and
+   drops the column, rather than from M1's literal schema text. Verified equivalent
+   for this migration — `sqlite_master.sql` and `PRAGMA table_info` are
+   byte-identical between the two constructions — but the technique assumes
+   current-schema-minus-column equals old-schema, which stops holding once a second
+   column lands. Tighten it when the next migration is written.
+
+**One M5 test was wrong, and the sign-off run is what caught it.** CI failed once on
+`report.spec.ts`'s order-of-addition case while `main` was green on identical code.
+The cause was not a race: `allInnerTexts()` does not auto-wait, the report payload
+arrives from a second fetch after the screen mounts, and the assertion therefore
+compared `[]` to `[]` and passed while proving nothing. Its locator also swept the
+whole `formula` section, which contains the process table whose step numbers restart
+at 1, mixing two independent sequences. And the column it asserted on is
+`enumerate(formula.lines, start=1)` — a render-order enumeration that ascends no
+matter what order the engine produced, so the test could never have detected the
+thing its name claimed. Replaced with an assertion that compares the rendered
+ingredient rows against `formula.lines` from the report endpoint, behind an
+auto-waiting visibility check. The engine's ordering was never at risk:
+`build()` sorts by `(order, food_id)` and always did.
+
+**Not an exit criterion, and still unverified:** `docker compose up --build`. The
+Docker daemon was unavailable throughout M5, so the container boot path has never
+been exercised. `make e2e` runs uvicorn directly, which proves the app but not the
+image.
+
+**Two open questions M5 surfaced rather than answered**, now §15 items 9 and 10:
+which allergen the generic `nuts_seeds` entry carries, and whether the 1-5 observed
+texture scale is calibrated the way the founder actually scores. The second matters
+more after this milestone than before it, because Task 11 wrote the scale into the
+spec, making it the reference rather than a plan decision.

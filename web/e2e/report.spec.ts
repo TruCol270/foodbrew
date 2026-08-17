@@ -31,12 +31,36 @@ test('the report opens with identity, formula and allergens', async ({ page }) =
   await expect(page.getByTestId('allergens-unrecorded')).toContainText('Olive oil')
 })
 
-test('the formula is in order of addition, not the order foods were picked', async ({ page }) => {
+test('the formula screen renders the engine order of addition, row for row', async ({ page, request }) => {
   await buildAndEvaluate(page)
+  const evaluationId = page.url().split('/evaluations/')[1]
   await page.getByRole('link', { name: /printable report/i }).click()
-  const positions = await page.getByTestId('formula').locator('tbody tr td:first-child').allInnerTexts()
-  const numbered = positions.filter((t) => /^\d+$/.test(t.trim())).map(Number)
-  expect(numbered).toEqual([...numbered].sort((a, b) => a - b))
+
+  // Scoped to the formula table specifically: the `formula` section also contains
+  // the process table, whose step numbers restart at 1, so a section-wide sweep
+  // of `td:first-child` mixes two independent sequences and proves nothing.
+  const rows = page.getByTestId('formula-table').locator('tbody tr:not([data-testid="formula-total"])')
+
+  // `allInnerTexts()` does not auto-wait. The report payload arrives from a second
+  // fetch after this screen mounts, so reading straight away compares [] to [] and
+  // passes while proving nothing — which is exactly how the previous version of
+  // this test went green locally and red once in CI.
+  await expect(rows.first()).toBeVisible()
+  const rendered = await rows.locator('th[scope="row"]').allInnerTexts()
+
+  // The real contract: the screen shows the engine's order, not its own. The
+  // engine sorts by (order, food_id); the position column is only an enumeration
+  // of that result, so asserting the column ascends cannot detect a wrong order.
+  const report = await (await request.get(`/api/v1/evaluations/${evaluationId}/report`)).json()
+  const expected = report.formula.lines.map((line: { food_name: string }) => line.food_name)
+
+  expect(rendered.map((t) => t.trim())).toEqual(expected)
+  expect(expected.length).toBeGreaterThan(1)
+
+  const positions = await rows.locator('td:first-child').allInnerTexts()
+  expect(positions.map((t) => Number(t.trim()))).toEqual(
+    expected.map((_: string, i: number) => i + 1),
+  )
 })
 
 test('the markdown export carries the same formula the screen shows', async ({ page, request }) => {
