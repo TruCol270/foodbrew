@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -25,6 +26,7 @@ from foodbrew.api.routers import (
 from foodbrew.api.settings import Settings, load_settings
 from foodbrew.db import ensure_database
 from foodbrew.engine import ValidationRejection
+from foodbrew.store.connection import connect
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -53,8 +55,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.get("/api/v1/health")
-    def health() -> dict:
-        return {"status": "ok", "engine_version": ENGINE_VERSION}
+    def health() -> JSONResponse:
+        # Decision #7: this endpoint is what Fly restarts the machine on, so it
+        # has to fail when the database is unusable rather than only when the
+        # process is dead. One indexed read is cheap enough for a 30s check.
+        try:
+            with connect(app.state.settings.db_path) as conn:
+                conn.execute("SELECT 1 FROM enzyme LIMIT 1").fetchone()
+        except sqlite3.Error as exc:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unavailable",
+                    "engine_version": ENGINE_VERSION,
+                    "database": str(exc),
+                },
+            )
+        return JSONResponse(
+            content={"status": "ok", "engine_version": ENGINE_VERSION, "database": "ok"}
+        )
 
     @app.get("/robots.txt", include_in_schema=False)
     def robots() -> PlainTextResponse:
