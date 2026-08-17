@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from foodbrew import ENGINE_VERSION
+from foodbrew.api.access import install_access_gate
 from foodbrew.api.routers import (
     catalog,
     evaluations,
@@ -38,6 +39,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="FoodBrew", version=ENGINE_VERSION, lifespan=lifespan)
     app.state.settings = settings
+
+    # Only when a password is configured (decision #12): local development and
+    # the test suite run open, and the deploy checklist's 401 smoke test is what
+    # catches a production instance whose secret was never set.
+    if settings.access_password:
+        install_access_gate(app, settings.access_password)
 
     @app.exception_handler(ValidationRejection)
     async def _rejection(_: Request, exc: ValidationRejection) -> JSONResponse:
