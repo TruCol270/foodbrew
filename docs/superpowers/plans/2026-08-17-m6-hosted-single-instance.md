@@ -1394,17 +1394,50 @@ Everything after this is a human action against real infrastructure. Do **not** 
 
 ## M6 exit criteria
 
-- [ ] `.venv/bin/pytest -q` passes with zero failures and zero skips (expect 796).
-- [ ] `.venv/bin/ruff check src tests` is clean.
-- [ ] `cd web && npm run typecheck && npm run build` succeeds, with no frontend file changed by this milestone.
-- [ ] `make e2e` still passes all 21 specs — the gate is absent without the env var.
-- [ ] **Every M1–M5 test still passes untouched.** M6 changes no rule, no verdict, no schema, and no golden fixture. The only pre-existing test file that may change is none; every new assertion lives in a new file. `tests/api/test_app.py`'s health test keeps passing because the new `database` key is additive.
-- [ ] `tests/api/test_access.py` passes: unauthenticated 401 with a browser challenge, right password 200, malformed headers 401 rather than 500, health and robots open, no gate when unset.
-- [ ] `tests/api/test_contracts_m6.py` passes, and its two mutation checks were performed by hand and reverted.
-- [ ] `tests/test_fly_config.py` passes — one mount at `/data`, `auto_stop_machines = "off"`, a volume-safe deploy strategy, no secret in the file, and the backup job verifies integrity before uploading.
-- [ ] `tests/tools/test_snapshot.py` passes, and `python -m foodbrew.tools.snapshot` produced a valid copy of the real 53-food database.
-- [ ] The container run in Task 10 step 4 returned 401 / 401 / 200 and a healthy `database: ok`.
-- [ ] The in-container snapshot in Task 10 step 5 returned `(53,)`.
+- [x] `.venv/bin/pytest` passes with zero failures and zero skips — **813** (the plan estimated 796; the extra 17 are Task 3's added header assertions and the seven non-ASCII regressions).
+- [x] `.venv/bin/ruff check src tests` is clean.
+- [x] `cd web && npm run typecheck && npm run build` succeeds, with no frontend file changed by this milestone.
+- [x] `make e2e` still passes all 21 specs — the gate is absent without the env var.
+- [x] **Every M1–M5 test still passes untouched.** M6 changes no rule, no verdict, no schema, and no golden fixture. The only pre-existing test file that may change is none; every new assertion lives in a new file. `tests/api/test_app.py`'s health test keeps passing because the new `database` key is additive.
+- [x] `tests/api/test_access.py` passes: unauthenticated 401 with a browser challenge, right password 200, malformed headers 401 rather than 500, health and robots open, no gate when unset.
+- [x] `tests/api/test_contracts_m6.py` passes, and its two mutation checks were performed by hand and reverted. The constant-time guard itself had to be fixed first: a bare substring scan also matched the explanatory comment above the code, so it could not have detected `==`.
+- [x] `tests/test_fly_config.py` passes — one mount at `/data`, `auto_stop_machines = "off"`, a volume-safe deploy strategy, no secret in the file, and the backup job verifies integrity before uploading.
+- [x] `tests/tools/test_snapshot.py` passes, and `python -m foodbrew.tools.snapshot` produced a valid copy of the real 53-food database.
+- [x] The container run in Task 10 step 4 returned 401 / 401 / 200 and `{"status":"ok","engine_version":"1.0.0","database":"ok"}`, against a real `docker build` of this branch on 2026-08-17.
+- [x] The in-container snapshot in Task 10 step 5 returned `(53,)`, and `PRAGMA integrity_check` on the copy returned `ok`.
+
+### Container verification, run 2026-08-17
+
+Docker was unavailable during execution, so Task 10 steps 4 and 5 were left
+unchecked rather than inferred. They were run afterwards against a real
+`docker build` of this branch, and both passed:
+
+```
+no password:    401
+wrong password: 401
+right password: 200
+health:         {"status":"ok","engine_version":"1.0.0","database":"ok"}
+robots:         User-agent: * Disallow: /
+
+python -m foodbrew.tools.snapshot /data/foodbrew.db /tmp/snap.db  ->  (53,)
+PRAGMA integrity_check on the copy                                ->  ok
+```
+
+Three checks beyond what the plan asked for, because each covers a property the
+unit tests assert but the image had never demonstrated:
+
+- **The non-ASCII fix holds in the image.** An accented guess and an emoji guess
+  both return 401, and an instance configured with `café-au-lait` as its password
+  admits that password with a 200. Before the fix in `09d822c` the first two were
+  500s and the third would have locked the founder out permanently.
+- **Fail-open is real and looks exactly as documented.** A container started with
+  no `FOODBREW_ACCESS_PASSWORD` serves `/api/v1/enzymes` with a **200** to an
+  unauthenticated request. This is decision #12 behaving as designed, and it is
+  the reason the deploy checklist's 401 `curl` is an exit criterion rather than a
+  suggestion — it is the only thing standing between a mis-set secret and a
+  public read/write endpoint holding her bench data.
+- **The snapshot command is the one CI runs**, verbatim, so a failure here would
+  have meant backups failing silently at 07:17 UTC.
 
 **Operator steps, done by a human against real infrastructure (not by an agent):**
 
